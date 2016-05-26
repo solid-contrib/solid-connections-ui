@@ -43,6 +43,7 @@
 
   // Init list
   var uList = new window.List('connections', options, values)
+  uList.sort('name', { order: 'asc' })
 
   // ------------ END LIST CONF ------------
 
@@ -58,16 +59,12 @@
     }
   }
 
-  // Show user menu
-  var showUserMenu = function () {
-    showElement(usermenu)
-    hideElement(avatar)
-  }
-
-  // Hide user menu
-  var hideUserMenu = function () {
-    showElement(avatar)
-    hideElement(usermenu)
+  var addConnection = function (profile) {
+    uList.add({
+      name: profile.name,
+      phone: '123456'
+    })
+    uList.sort('name', { order: 'asc' })
   }
 
   // Fetch a WebID profile using Solid.js
@@ -228,6 +225,12 @@
     footer.appendChild(button)
     button.classList.add('btn', 'btn-primary')
     button.innerHTML = 'Connect'
+    button.addEventListener('click', function () {
+      addConnection(profile)
+      deleteElement(card)
+      hideElement(newModal)
+      hideElement(overlay)
+    }, false)
 
     // finish
     parent.appendChild(card)
