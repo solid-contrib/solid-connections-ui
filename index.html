@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Solid Connections</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="assets/css/normalize.css">
+  <link rel="stylesheet" href="assets/css/spectre.min.css">
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <!-- <link rel="stylesheet" href="assets/css/solid.css"> -->
+  <link rel="icon" type="image/png" href="images/favicon.png">
+</head>
+<body>
+  <div id="overlay" class="modal-overlay hidden"></div>
+
+  <header class="fixed column col-12">
+    <input id="search" class="form-input search" type="text" placeholder="Search">
+  </header>
+
+  <!-- Feedback messages (errors, success, warning, etc)-->
+  <section id="feedback" class="column col-12 col-sm-6 fixed feedback"></section>
+
+  <section id="connections" class="column main">
+    <div class="connections-list"></div>
+  </section>
+
+  <div id="new" class="column hidden">
+      <div class="modal-temp modal-sm">
+          <div class="modal-container" role="document">
+              <div class="modal-header">
+                  <button type="button" class="btn btn-clear float-right cancel-new tooltip" data-tooltip="Close" aria-label="Close"></button>
+                  <div class="modal-title">New connection</div>
+              </div>
+              <div class="modal-body">
+                <div id="lookup" class="content">
+                  <form lpformnum="1">
+                      <div class="form-group">
+                          <label class="form-label" for="webid">WebID</label>
+                          <input id="webid" class="form-input" type="text" placeholder="https://..." value="https://deiu.me/profile#me">
+                      </div>
+                  </form>
+                </div>
+                <div id="profile-info" class="content"></div>
+              </div>
+              <div id="info-buttons" class="modal-footer">
+                  <button class="btn btn-link cancel-new">Close</button>
+                  <button id="add-new" class="btn btn-primary">Get information</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <div id="actions" class="col-12 abs bottom-sticky">
+    <div class="btn-group btn-group-block centered">
+      <button id="show-new" class="btn btn-lg"><i class="fa fa-plus-square" aria-hidden="true"></i> Add New</button>
+    </div>
+  </div>
+
+  <script src="assets/js/list.min.js"></script>
+  <script src="assets/js/rdflib-0.7.0.min.js"></script>
+  <script src="assets/js/solid.min.js"></script>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

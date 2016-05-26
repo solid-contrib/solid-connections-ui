@@ -1,0 +1,207 @@
+html, body {
+    margin: 0px;
+    padding: 0px;
+    outline: 0px;
+    font-family: 'Helvetica';
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+    font-size: 2.5em;
+    font-weight: 300;
+    color: rgba(38, 38, 38, 1);
+}
+
+h2 {
+    font-size: 1.8em;
+    font-weight: 300;
+    color: rgba(38, 38, 38, 1);
+}
+
+p {
+    font-size: 1em;
+    font-weight: 400;
+    line-height: 1.4em;
+    color: rgba(38, 38, 38, 1);
+}
+
+form {
+    padding: 0px 20px 0px 20px;
+}
+
+form fieldset {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    padding: 0px;
+    margin: 0px;
+}
+
+form fieldset label {
+    font-size: 1em;
+    color: rgba(38, 38, 38, 0.8);
+}
+
+form fieldset label.success {
+    font-size: 1em;
+    color: #00e676;
+}
+
+form fieldset label.error {
+    font-size: 1em;
+    color: #FF1744;
+}
+
+form fieldset input {
+    width: 100%;
+    padding: 12px 15px 13px 15px;
+    margin: 10px auto 15px auto;
+    border-radius: 3px;
+    border: 1px solid rgba(38, 38, 38, 0.1);
+    font-size: 1em;
+    font-weight: 400;
+    color: rgba(38, 38, 38, 1);
+    outline: none;
+    box-sizing: border-box;
+}
+
+form fieldset input.success {
+    border: 1px solid #00e676;
+}
+
+form fieldset input.error {
+    border: 1px solid #FF1744;
+}
+
+form fieldset input:focus {
+    border: 1px solid rgba(38, 38, 38, 0.5);
+}
+
+form fieldset .input-container {
+    width: 100%;
+    margin: 10px auto 15px auto;
+    border-radius: 3px;
+    border: 1px solid rgba(38, 38, 38, 0.1);
+    font-size: 1em;
+    font-weight: 400;
+    color: rgba(38, 38, 38, 1);
+    outline: none;
+    box-sizing: border-box;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+form fieldset .input-container.active-field {
+    border: 1px solid rgba(38, 38, 38, 0.5);
+}
+
+form fieldset .input-container > input {
+    width: 85%;
+    padding: 12px 15px 13px 15px;
+    margin: 0px;
+    border-radius: 3px;
+    border: none;
+    font-size: 1em;
+    font-weight: 400;
+    color: rgba(38, 38, 38, 1);
+    outline: none;
+    box-sizing: border-box;
+}
+
+form fieldset .input-container > .input-status {
+    width: 15%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+form fieldset .input-container > .input-status > img {
+    height: 18px;
+}
+
+.btn {
+    width: 100%;
+    border: 1px solid #FF5F6D;
+    border-radius: 3px;
+    background-color: #FF5F6D;
+    padding: 15px 15px 16px 15px;
+    box-shadow: none;
+    font-size: 1em;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn {
+    width: 100%;
+    border: 1px solid #FE8069;
+    border-radius: 3px;
+    background-color: #FE8069;
+    padding: 15px 15px 16px 15px;
+    box-shadow: none;
+    font-size: 1em;
+    color: white;
+    font-weight: 400;
+    cursor: pointer;
+    outline: none;
+}
+
+input[type="button"].disabled {
+    border: 1px solid #DEDEDE;
+    background-color: #DEDEDE;
+    cursor: default;
+    outline: none;
+}
+
+.btn.gradient {
+    border: 1px solid linear-gradient(45deg, #FE8069 , #FF5F6D );
+    background: linear-gradient(45deg, #FE8069 , #FF5F6D );
+}
+
+.btn.gradient.disabled {
+    border: 1px solid #DEDEDE;
+    background: #DEDEDE;
+    cursor: default;
+    outline: none;
+}
+
+input[type="button"].bold {
+    border: 1px solid #FF5F6D;
+    background: #FF5F6D;
+}
+
+input[type="button"].bold.disabled {
+    border: 1px solid #DEDEDE;
+    background: #DEDEDE;
+    cursor: default;
+    outline: none;
+}
+
+.btn.secondary {
+    color: #FE8069;
+    border: 1px solid #FE8069;
+    background-color: transparent;
+}
+
+.btn.secondary.disabled {
+    color: #DEDEDE;
+    border: 1px solid #DEDEDE;
+    background-color: transparent;
+}
+
+.btn.secondary.bold {
+    color: #FF5F6D;
+    border: 1px solid #FF5F6D;
+    background-color: transparent;
+}
+
+.btn.secondary.bold.disabled {
+    color: #DEDEDE;
+    border: 1px solid #DEDEDE;
+    background: transparent;
+}
