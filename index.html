@@ -15,48 +15,49 @@
   <link rel="icon" type="image/png" href="images/favicon.png">
 </head>
 <body>
-  <div id="overlay" class="modal-overlay hidden"></div>
-
-  <header class="fixed column col-12">
+  <div id="overlay" class="modal-overlay hidden">
+    <div id="new" class="hidden">
+        <div class="modal-temp modal-sm">
+            <div class="modal-container" role="document">
+                <div class="modal-header">
+                    <button type="button" class="btn btn-clear float-right cancel-new tooltip" data-tooltip="Close" aria-label="Close"></button>
+                    <div class="modal-title">New connection</div>
+                </div>
+                <div class="modal-body">
+                  <div id="lookup" class="content">
+                    <form lpformnum="1">
+                        <div class="form-group">
+                            <label class="form-label" for="webid">WebID</label>
+                            <input id="webid" class="form-input" type="text" placeholder="https://..." value="https://deiu.me/profile#me">
+                        </div>
+                    </form>
+                  </div>
+                  <div id="profile-info" class="content"></div>
+                </div>
+                <div id="info-buttons" class="modal-footer">
+                    <button class="btn btn-link cancel-new">Close</button>
+                    <button id="add-new" class="btn btn-primary">Get information</button>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+  <header class="column col-sm-8 centered">
     <input id="search" class="form-input search" type="text" placeholder="Search">
   </header>
 
-  <!-- Feedback messages (errors, success, warning, etc)-->
-  <section id="feedback" class="column col-12 col-sm-6 fixed feedback"></section>
+  <div class="column col-sm-8 centered">
+    <!-- Feedback messages (errors, success, warning, etc)-->
+    <section id="feedback" class="column col-12 col-sm-6 fixed feedback"></section>
 
-  <section id="connections" class="column main">
-    <div class="connections-list"></div>
-  </section>
+    <section id="connections" class="main">
+      <div class="connections-list"></div>
+    </section>
 
-  <div id="new" class="column hidden">
-      <div class="modal-temp modal-sm">
-          <div class="modal-container" role="document">
-              <div class="modal-header">
-                  <button type="button" class="btn btn-clear float-right cancel-new tooltip" data-tooltip="Close" aria-label="Close"></button>
-                  <div class="modal-title">New connection</div>
-              </div>
-              <div class="modal-body">
-                <div id="lookup" class="content">
-                  <form lpformnum="1">
-                      <div class="form-group">
-                          <label class="form-label" for="webid">WebID</label>
-                          <input id="webid" class="form-input" type="text" placeholder="https://..." value="https://deiu.me/profile#me">
-                      </div>
-                  </form>
-                </div>
-                <div id="profile-info" class="content"></div>
-              </div>
-              <div id="info-buttons" class="modal-footer">
-                  <button class="btn btn-link cancel-new">Close</button>
-                  <button id="add-new" class="btn btn-primary">Get information</button>
-              </div>
-          </div>
+    <div id="actions" class="col-12 col-sm-8 abs bottom-sticky">
+      <div class="btn-group btn-group-block centered">
+        <button id="show-new" class="btn btn-lg btn-sticky-bottom"><i class="fa fa-plus-square" aria-hidden="true"></i> Add New</button>
       </div>
-  </div>
-
-  <div id="actions" class="col-12 abs bottom-sticky">
-    <div class="btn-group btn-group-block centered">
-      <button id="show-new" class="btn btn-lg"><i class="fa fa-plus-square" aria-hidden="true"></i> Add New</button>
     </div>
   </div>
 

@@ -23,21 +23,50 @@
   var Solid = require('solid')
 
   // ------------ LIST CONF ------------
+  var connectionTemplate = '<div class="user-card center">' +
+    '<figure class="avatar avatar-xl initials inline-block"><img class="picture"></figure>' +
+    '<div class="inline-block ml-10">' +
+    ' <div class="name"></div>' +
+    ' <div class="email"></div>' +
+    '</div>' +
+  '</div>'
+
   var options = {
     listClass: 'connections-list',
     searchClass: 'search-connection',
-    valueNames: [ 'name', 'phone' ],
-    item: '<div><span class="name"></span><span class="phone"></span></div>'
+    valueNames: [
+      'name',
+      'email',
+      'webid',
+      { attr: 'src', name: 'picture' },
+      { attr: 'href', name: 'link' },
+      { attr: 'data-initial', name: 'initials' }
+    ],
+    item: connectionTemplate
   }
+
+  var defaultFields = ['name', 'email']
 
   var values = [
     {
       name: 'Jon Doe',
-      phone: '+1 (234) 567-8901'
+      email: 'john@doe.com',
+      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png'
     },
     {
       name: 'Jane Doe',
-      phone: '+1 (555) 301-5155'
+      email: 'jane@doe.com',
+      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png'
+    },
+    {
+      name: 'Adam Crow',
+      email: 'james@crow.com',
+      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png'
+    },
+    {
+      name: 'Mike Smith',
+      email: 'm@smith.net',
+      initials: 'M S'
     }
   ]
 
@@ -50,7 +79,7 @@
   // Search the connections list for a given value
   // @param fields {array}
   var searchList = function (fields) {
-    fields = fields || ['name', 'phone']
+    fields = fields || defaultFields
     var searchVal = document.getElementById('search').value
     if (searchVal.length >= 2) {
       uList.search(searchVal, fields)
@@ -60,10 +89,18 @@
   }
 
   var addConnection = function (profile) {
-    uList.add({
-      name: profile.name,
-      phone: '123456'
-    })
+    var item = {}
+    item.webid = profile.webid
+    item.name = profile.name
+    if (profile.picture) {
+      item.picture = profile.picture
+    } else {
+      item.initials = getInitials(profile.name)
+    }
+    if (profile.email) {
+      item.picture = profile.picture
+    }
+    uList.add(item)
     uList.sort('name', { order: 'asc' })
   }
 
@@ -228,12 +265,31 @@
     button.addEventListener('click', function () {
       addConnection(profile)
       deleteElement(card)
-      hideElement(newModal)
-      hideElement(overlay)
+      closeModal()
     }, false)
 
     // finish
     parent.appendChild(card)
+  }
+
+  var getInitials = function (name) {
+    var initials = ''
+    if (name.length <= 2) {
+      return name.toUpperCase()
+    }
+    if (name.indexOf(' ') >= 0) {
+      var pieces = name.split(' ')
+      for (var i = 0; i < pieces.length; i++) {
+        if (initials.length > 0) {
+          initials += ' '
+        }
+        initials += pieces[i][0].toUpperCase()
+        if (i === 1) {
+          break
+        }
+      }
+    }
+    return initials
   }
 
   // ------------ FEEDBACK ------------
@@ -283,6 +339,19 @@
     elem.parentNode.removeChild(elem)
   }
 
+  // ------------ MODAL ------------
+  var closeModal = function () {
+    hideElement(newModal)
+    hideElement(overlay)
+    overlay.style.display = 'none'
+  }
+
+  var showModal = function () {
+    showElement(newModal)
+    showElement(overlay)
+    overlay.style.display = 'flex'
+  }
+
   // ------------ UTILITY ------------
   var hideElement = function (elem) {
     if (elem) {
@@ -316,8 +385,7 @@
   }, false)
 
   showNewModal.addEventListener('click', function () {
-    showElement(overlay)
-    showElement(newModal)
+    showModal()
   }, false)
 
   addNewBtn.addEventListener('click', function () {
@@ -327,8 +395,7 @@
   // close modal clicks
   for (var i = 0; i < cancelNewBtn.length; i++) {
     cancelNewBtn[i].addEventListener('click', function () {
-      hideElement(newModal)
-      hideElement(overlay)
+      closeModal()
     }, false)
   }
 
