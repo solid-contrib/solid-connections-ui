@@ -35,8 +35,8 @@
     ' </figure>' +
     '</div>' +
     '<div class="inline-block ml-10">' +
-    ' <div class="name"></div>' +
-    ' <div class="email"></div>' +
+    ' <div class="name truncate"></div>' +
+    ' <div class="email truncate"></div>' +
     ' <div class="status green"></div>' +
     '</div>' +
   '</div>'
