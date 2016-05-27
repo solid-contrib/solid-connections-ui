@@ -96,6 +96,12 @@
   }
 
   var addConnection = function (profile) {
+    showElement(lookupElement)
+    showElement(infoButtons)
+    if (uList.get('webid', profile.webid).length > 0) {
+      addFeedback('error', 'You are already connected to this user')
+      return
+    }
     var item = {}
     item.webid = profile.webid
     item.name = profile.name

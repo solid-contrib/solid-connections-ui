@@ -24,13 +24,18 @@
 .modal-container {
   position: relative;
 }
+.modal-container .modal-body {
+  max-height: 100%;
+}
 
 .avatar.avatar-xl {
   font-size: 1.6rem;
 }
 
 .form-input {
-  padding: .9rem 1rem;
+  padding: 2rem 1rem;
+  font-size: 1.5rem;
+  line-height: 2.5rem;
 }
 
 .bottom-sticky {
@@ -38,6 +43,7 @@
 	display: flex;
 	justify-content: center;
   bottom: 0;
+  z-index: 9;
 }
 .btn-sticky-bottom {
   border-bottom-right-radius: 0 !important;
