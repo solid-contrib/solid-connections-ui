@@ -9,14 +9,19 @@
   var SOLID = $rdf.Namespace('http://www.w3.org/ns/solid/terms#')
 
   // init static elements
+  var welcome = document.getElementById('welcome')
   var search = document.getElementById('search')
+  var searchElement = document.getElementById('search-area')
+  var clearSearch = document.getElementById('clear-search')
+  var noUsersFound = document.getElementById('no-users')
+  var actionsElement = document.getElementById('actions')
   var feedback = document.getElementById('feedback')
   var newModal = document.getElementById('new')
   var overlay = document.getElementById('overlay')
   var infoButtons = document.getElementById('info-buttons')
   var addNewBtn = document.getElementById('add-new')
   var cancelNewBtn = document.getElementsByClassName('cancel-new')
-  var showNewModal = document.getElementById('show-new')
+  var showNewModal = document.getElementsByClassName('show-new')
   var lookupElement = document.getElementById('lookup')
   var profileInfo = document.getElementById('profile-info')
 
@@ -24,9 +29,11 @@
 
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card center">' +
-    '<figure class="avatar avatar-xl initials inline-block">' +
-    ' <img class="picture">' +
-    '</figure>' +
+    '<div class="inline-block">' +
+    ' <figure class="avatar avatar-xl initials">' +
+    '   <img class="picture">' +
+    ' </figure>' +
+    '</div>' +
     '<div class="inline-block ml-10">' +
     ' <div class="name"></div>' +
     ' <div class="email"></div>' +
@@ -54,7 +61,7 @@
 
   var values = [
     {
-      name: 'Jon Doe',
+      name: 'Jon Doe (has a very long name that has to be truncated)',
       email: 'john@doe.com',
       picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png'
     },
@@ -67,7 +74,7 @@
       name: 'Adam Crow',
       email: 'james@crow.com',
       picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
-      status: 'CONNECTED'
+      status: 'connected'
     },
     {
       name: 'Mike Smith',
@@ -77,10 +84,6 @@
     }
   ]
 
-  // Init list
-  var uList = new window.List('connections', options, values)
-  uList.sort('name', { order: 'asc' })
-
   // ------------ END LIST CONF ------------
 
   // Search the connections list for a given value
@@ -88,11 +91,26 @@
   var searchList = function (fields) {
     fields = fields || defaultFields
     var searchVal = document.getElementById('search').value
+    if (searchVal.length > 0) {
+      showElement(clearSearch)
+    } else {
+      hideElement(clearSearch)
+    }
     if (searchVal.length >= 2) {
       uList.search(searchVal, fields)
+      if (uList.visibleItems.length === 0) {
+        showElement(noUsersFound)
+      }
     } else {
       uList.search()
     }
+  }
+
+  var clearSearchList = function () {
+    hideElement(clearSearch)
+    hideElement(noUsersFound)
+    search.value = ''
+    uList.search()
   }
 
   var addConnection = function (profile) {
@@ -114,7 +132,11 @@
     if (profile.email) {
       item.picture = profile.picture
     }
+    item.status = 'invitation sent'
     uList.add(item)
+    hideElement(welcome)
+    showElement(searchElement)
+    showElement(actionsElement)
     addFeedback('success', 'You have a new connection!')
     uList.sort('name', { order: 'asc' })
   }
@@ -314,7 +336,7 @@
   // @param msg {string} message to send
   var addFeedback = function (msgType, msg) {
     msgType = msgType || 'info'
-    var timeout = 2000
+    var timeout = 4000
 
     switch (msgType) {
       case 'success':
@@ -399,19 +421,35 @@
     searchList()
   }, false)
 
-  showNewModal.addEventListener('click', function () {
-    showModal()
+  clearSearch.addEventListener('click', function () {
+    clearSearchList()
   }, false)
+
+  for (var i = 0; i < showNewModal.length; i++) {
+    showNewModal[i].addEventListener('click', function () {
+      showModal()
+    }, false)
+  }
 
   addNewBtn.addEventListener('click', function () {
     findWebID()
   }, false)
 
   // close modal clicks
-  for (var i = 0; i < cancelNewBtn.length; i++) {
+  for (i = 0; i < cancelNewBtn.length; i++) {
     cancelNewBtn[i].addEventListener('click', function () {
       closeModal()
     }, false)
+  }
+
+  // Init
+  var uList = new window.List('connections', options, values)
+  if (uList.visibleItems.length === 0) {
+    showElement(welcome)
+  } else {
+    showElement(searchElement)
+    showElement(actionsElement)
+    uList.sort('name', { order: 'asc' })
   }
 
   // public methods

@@ -1,9 +1,23 @@
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
 .brand-logo {
   height: 1.6rem;
 }
 
 .main {
+  height: 100%;
   padding-bottom: 5rem;
+}
+
+.welcome {
+  height: 100%;
+  display: flex;
+  flex-flow: column wrap;
+  align-items: center;
+  justify-content: center;
 }
 
 #overlay {
@@ -17,7 +31,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 10;
+  z-index: 100;
   background-color: rgba(0,0,0,0.5); /*dim the background*/
 }
 
@@ -36,6 +50,21 @@
   padding: 2rem 1rem;
   font-size: 1.5rem;
   line-height: 2.5rem;
+}
+
+.search {
+  box-shadow: none;
+  border: 0;
+}
+
+.clear-search {
+  padding: 1rem;
+  cursor: pointer;
+}
+
+.search-box {
+  display: flex;
+  border-bottom: 1px solid #ccc;
 }
 
 .bottom-sticky {
@@ -57,7 +86,7 @@
   border: 0;
 }
 
-/* User card */
+/* User cards */
 .user-card {
   padding: 1rem;
   border-bottom: 1px solid #ccc;
@@ -65,6 +94,7 @@
 .status {
   color: #32b643;
   font-size: 1.1rem;
+  text-transform: uppercase;
 }
 .email {
   color: #999;
@@ -75,11 +105,25 @@
 .initials {
   background-color: #5764c6;
 }
+
+.feedback {
+  padding-bottom: 1rem;
+}
+
 /* Misc */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .center {
   display: flex;
   align-items: center;
+}
+
+.stretch {
+  flex: 1;
 }
 
 .hidden {
