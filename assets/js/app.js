@@ -24,10 +24,13 @@
 
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card center">' +
-    '<figure class="avatar avatar-xl initials inline-block"><img class="picture"></figure>' +
+    '<figure class="avatar avatar-xl initials inline-block">' +
+    ' <img class="picture">' +
+    '</figure>' +
     '<div class="inline-block ml-10">' +
     ' <div class="name"></div>' +
     ' <div class="email"></div>' +
+    ' <div class="status green"></div>' +
     '</div>' +
   '</div>'
 
@@ -38,7 +41,9 @@
       'name',
       'email',
       'webid',
+      'status',
       { attr: 'src', name: 'picture' },
+      { attr: 'class', name: 'image' },
       { attr: 'href', name: 'link' },
       { attr: 'data-initial', name: 'initials' }
     ],
@@ -61,12 +66,14 @@
     {
       name: 'Adam Crow',
       email: 'james@crow.com',
-      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png'
+      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
+      status: 'CONNECTED'
     },
     {
       name: 'Mike Smith',
       email: 'm@smith.net',
-      initials: 'M S'
+      initials: 'M S',
+      picture: 'assets/images/empty.png'
     }
   ]
 
@@ -95,12 +102,14 @@
     if (profile.picture) {
       item.picture = profile.picture
     } else {
+      item.picture = 'assets/images/empty.png'
       item.initials = getInitials(profile.name)
     }
     if (profile.email) {
       item.picture = profile.picture
     }
     uList.add(item)
+    addFeedback('success', 'You have a new connection!')
     uList.sort('name', { order: 'asc' })
   }
 

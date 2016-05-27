@@ -54,7 +54,10 @@
   padding: 1rem;
   border-bottom: 1px solid #ccc;
 }
-
+.status {
+  color: #32b643;
+  font-size: 1.1rem;
+}
 .email {
   color: #999;
 }
