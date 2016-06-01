@@ -68,7 +68,11 @@ html, body {
   border-bottom: 1px solid #ccc;
 }
 
-.search-box img {
+.cancel-view {
+  cursor: pointer
+}
+
+.icon {
   width: 20px;
 }
 
@@ -96,6 +100,10 @@ html, body {
   padding: 1rem;
   border-bottom: 1px solid #ccc;
 }
+.webid {
+  display: flex;
+  width: 100%;
+}
 .status {
   color: #32b643;
   font-size: 1.1rem;
@@ -115,6 +123,15 @@ html, body {
   padding-bottom: 1rem;
 }
 
+.user {
+  background: #fff;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 101;
+}
+
 /* Misc */
 .center {
   display: flex;
@@ -127,6 +144,40 @@ html, body {
 
 .hidden {
   display: none;
+}
+
+/* SLIDER */
+.slider {
+    transform: translateX(-100%);
+    -webkit-transform: translateX(-100%);
+}
+
+.slide-in {
+    animation: slide-in 0.2s forwards;
+    -webkit-animation: slide-in 0.2s forwards;
+}
+
+.slide-out {
+    animation: slide-out 0.5s forwards;
+    -webkit-animation: slide-out 0.2s forwards;
+}
+
+@keyframes slide-in {
+    100% { transform: translateX(0%); }
+}
+
+@-webkit-keyframes slide-in {
+    100% { -webkit-transform: translateX(0%); }
+}
+
+@keyframes slide-out {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-100%); }
+}
+
+@-webkit-keyframes slide-out {
+    0% { -webkit-transform: translateX(0%); }
+    100% { -webkit-transform: translateX(-100%); }
 }
 
 /* styles for truncate '...' */

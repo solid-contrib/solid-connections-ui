@@ -13,7 +13,9 @@
   var search = document.getElementById('search')
   var searchElement = document.getElementById('search-area')
   var clearSearch = document.getElementById('clear-search')
+  var cancelViews = document.getElementsByClassName('cancel-view')
   var noUsersFound = document.getElementById('no-users')
+  var user = document.getElementById('user')
   var actionsElement = document.getElementById('actions')
   var feedback = document.getElementById('feedback')
   var newModal = document.getElementById('new')
@@ -29,6 +31,7 @@
 
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card center">' +
+    '<div class="webid">' +
     '<div class="inline-block">' +
     ' <figure class="avatar avatar-xl initials">' +
     '   <img class="picture">' +
@@ -39,42 +42,30 @@
     ' <div class="email"></div>' +
     ' <div class="status green"></div>' +
     '</div>' +
+    '</div>' +
   '</div>'
-
-  var options = {
-    listClass: 'connections-list',
-    searchClass: 'search-connection',
-    valueNames: [
-      'name',
-      'email',
-      'webid',
-      'status',
-      { attr: 'src', name: 'picture' },
-      { attr: 'class', name: 'image' },
-      { attr: 'href', name: 'link' },
-      { attr: 'data-initial', name: 'initials' }
-    ],
-    item: connectionTemplate
-  }
 
   var defaultFields = ['name', 'email']
 
-  var values = [
+  var items = [
     {
-      name: 'Jon Doe (has a very long name that has to be truncated)',
+      name: 'Jon Doe',
       email: 'john@doe.com',
       picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png'
+      // openview: function () { console.log('https://example.org/card#me') }
     },
     {
       name: 'Jane Doe',
       email: 'jane@doe.com',
-      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png'
+      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png',
+      webid: 'https://jane.org/card#me'
     },
     {
       name: 'Adam Crow',
       email: 'james@crow.com',
       picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
-      status: 'connected'
+      status: 'connected',
+      webid: 'https://adam.org/card#me'
     },
     {
       name: 'Mike Smith',
@@ -241,6 +232,14 @@
     }
 
     return profile
+  }
+
+  var viewProfile = function (webid) {
+    user.classList.add('slide-in')
+  }
+
+  var cancelView = function () {
+    user.classList.add('slide-out')
   }
 
   var decorateProfile = function (profile, parent) {
@@ -431,6 +430,12 @@
     }, false)
   }
 
+  for (i = 0; i < cancelViews.length; i++) {
+    cancelViews[i].addEventListener('click', function () {
+      cancelView()
+    }, false)
+  }
+
   addNewBtn.addEventListener('click', function () {
     findWebID()
   }, false)
@@ -443,7 +448,23 @@
   }
 
   // Init
-  var uList = new window.List('connections', options, values)
+  var listOptions = {
+    listClass: 'connections-list',
+    searchClass: 'search-connection',
+    valueNames: [
+      'name',
+      'email',
+      'status',
+      { attr: 'id', name: 'webid', evt: { action: 'click', fn: viewProfile } },
+      { attr: 'src', name: 'picture' },
+      { attr: 'class', name: 'image' },
+      { attr: 'href', name: 'link' },
+      { attr: 'data-initial', name: 'initials' }
+    ],
+    item: connectionTemplate
+  }
+
+  var uList = new window.List('connections', listOptions, items)
   if (uList.visibleItems.length === 0) {
     showElement(welcome)
   } else {

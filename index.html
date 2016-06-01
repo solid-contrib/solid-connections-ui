@@ -49,13 +49,13 @@
   <header id="search-area" class="column col-sm-6 centered hidden">
     <div class="search-box flex">
       <div class="flex center">
-        <img src="assets/icons/search.svg"/>
+        <img src="assets/icons/search.svg" class="icon" />
       </div>
       <div class="flex stretch center">
         <input id="search" class="form-input search" type="text" placeholder="Search">
       </div>
       <div id="clear-search" class="flex center clear-search tooltip tooltip-left hidden" data-tooltip="Clear search">
-        <img src="assets/icons/cancel.svg"/>
+        <img src="assets/icons/cancel.svg" class="icon" />
       </div>
     </div>
   </header>
@@ -70,6 +70,12 @@
 
     <section id="no-users" class="hidden">
       <h3 class="text-center">No matches found</h3>
+    </section>
+
+    <section id="user" class="user slider abs">
+      <div class="column col-sm-6 centered">
+        <div class="cancel-view"><img src="assets/icons/back.svg" class="icon" /></div>
+      </div>
     </section>
 
     <section id="welcome" class="welcome hidden">
@@ -92,7 +98,7 @@
     </div>
   </div>
 
-  <script src="assets/js/list.min.js"></script>
+  <script src="assets/js/list.js"></script>
   <script src="assets/js/rdflib-0.7.0.min.js"></script>
   <script src="assets/js/solid.min.js"></script>
 
