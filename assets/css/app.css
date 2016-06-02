@@ -107,6 +107,7 @@ html, body {
   display: flex;
   width: 100%;
 }
+
 .status {
   color: #32b643;
   font-size: 1.1rem;
@@ -124,6 +125,7 @@ html, body {
 
 .feedback {
   padding-bottom: 1rem;
+  z-index: 102;
 }
 
 .user {
@@ -137,8 +139,7 @@ html, body {
 
 /* Misc */
 .center {
-  display: flex;
-  align-items: center;
+  align-self: center;
 }
 
 .stretch {

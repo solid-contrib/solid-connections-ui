@@ -46,13 +46,13 @@
         </div>
     </div>
   </div>
-  <header id="search-area" class="column col-sm-6 centered hidden">
+  <header id="search-area" class="col-sm-6 centered hidden">
     <div class="search-box flex">
       <div class="flex center">
         <img src="assets/icons/search.svg" class="icon" />
       </div>
       <div class="flex stretch center">
-        <input id="search" class="form-input search" type="text" placeholder="Search by name, email...">
+        <input id="search" class="form-input search" type="text" placeholder="Search">
       </div>
       <div id="clear-search" class="flex center clear-search tooltip tooltip-left hidden" data-tooltip="Clear search">
         <img src="assets/icons/cancel.svg" class="icon" />
@@ -60,10 +60,10 @@
     </div>
   </header>
 
-  <div class="column col-sm-6 centered main">
-    <!-- Feedback messages (errors, success, warning, etc)-->
-    <section id="feedback" class="col-12 col-sm-12 feedback"></section>
+  <!-- Feedback messages (errors, success, warning, etc)-->
+  <div id="feedback" class="column col-sm-6 centered feedback"></div>
 
+  <div class="col-sm-6 centered main">
     <section id="connections">
       <div class="connections-list"></div>
     </section>
@@ -74,13 +74,15 @@
 
     <section id="user" class="user slider abs">
       <div class="row">
-        <div class="column col-sm-6 centered">
-          <div class="cancel-view"><img src="assets/icons/back.svg" class="icon" /></div>
+        <div class="column col-sm-6 centered flex center">
+          <div class="cancel-view center">
+            <img src="assets/icons/back.svg" class="icon mr-10" />
+          </div>
         </div>
       </div>
       <div class="row">
         <div class="column col-sm-6 centered">
-          <div id="profile-info" class="content"></div>
+          <div id="extended-info" class="content"></div>
         </div>
       </div>
     </section>

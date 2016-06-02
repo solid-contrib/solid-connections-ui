@@ -16,6 +16,7 @@
   var cancelViews = document.getElementsByClassName('cancel-view')
   var noUsersFound = document.getElementById('no-users')
   var user = document.getElementById('user')
+  var extendedInfo = document.getElementById('extended-info')
   var actionsElement = document.getElementById('actions')
   var feedback = document.getElementById('feedback')
   var newModal = document.getElementById('new')
@@ -32,12 +33,12 @@
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card center">' +
     '<div class="webid">' +
-    '<div class="inline-block">' +
+    '<div class="center">' +
     ' <figure class="avatar avatar-xl initials">' +
     '   <img class="picture">' +
     ' </figure>' +
     '</div>' +
-    '<div class="inline-block ml-10">' +
+    '<div class="column center">' +
     ' <div class="name"></div>' +
     ' <div class="email"></div>' +
     ' <div class="status green"></div>' +
@@ -45,31 +46,31 @@
     '</div>' +
   '</div>'
 
-  var defaultFields = ['name', 'email']
+  var searchFields = ['name']
 
   var items = [
     {
-      name: 'Jon Doe',
-      email: 'john@doe.com',
-      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png'
-      // openview: function () { console.log('https://example.org/card#me') }
+      name: 'John Doe',
+      emails: ['john@doe.com'],
+      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png',
+      webid: 'https://john.com/profile#me'
     },
     {
       name: 'Jane Doe',
-      email: 'jane@doe.com',
+      emails: ['jane@doe.com'],
       picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png',
       webid: 'https://jane.org/card#me'
     },
     {
       name: 'Adam Crow',
-      email: 'james@crow.com',
+      emails: ['james@crow.com'],
       picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
       status: 'connected',
       webid: 'https://adam.org/card#me'
     },
     {
       name: 'Mike Smith',
-      email: 'm@smith.net',
+      emails: ['m@smith.net'],
       initials: 'M S',
       picture: 'assets/images/empty.png'
     }
@@ -80,7 +81,7 @@
   // Search the connections list for a given value
   // @param fields {array}
   var searchList = function (fields) {
-    fields = fields || defaultFields
+    fields = fields || searchFields
     var searchVal = document.getElementById('search').value
     if (searchVal.length > 0) {
       showElement(clearSearch)
@@ -108,7 +109,7 @@
     showElement(lookupElement)
     showElement(infoButtons)
     if (uList.get('webid', profile.webid).length > 0) {
-      addFeedback('error', 'You are already connected to this user')
+      addFeedback('', 'You are already connected to this user')
       return
     }
     var item = {}
@@ -159,8 +160,8 @@
       hideLoadingButton(addNewBtn)
     })
     .catch(function (err) {
-      console.log(err)
-      addFeedback('error', 'Could not load profile: ' + err.statusText)
+      console.log('Could not load profile:', err)
+      addFeedback('error', 'Could not load profile data')
       hideLoadingButton(addNewBtn)
       showElement(infoButtons)
     })
@@ -220,18 +221,51 @@
       profile.picture = pic.uri
     }
 
-    var email = g.any(webidRes, FOAF('mbox'))
-    if (email) {
-      profile.email = email.uri
-      if (profile.email.indexOf('mailto:') === 0) {
-        profile.email = profile.email.slice(7)
-      }
+    var emails = g.statementsMatching(webidRes, FOAF('mbox'))
+    if (emails.length > 0) {
+      profile.emails = []
+      emails.forEach(function (email) {
+        var addr = email.object.uri
+        if (addr && addr.length > 0) {
+          if (addr.indexOf('mailto:') === 0) {
+            addr = addr.slice(7)
+          }
+          profile.emails.push(addr)
+        }
+      })
+    }
+
+    var phones = g.statementsMatching(webidRes, FOAF('phone'))
+    if (phones.length > 0) {
+      profile.phones = []
+      phones.forEach(function (phone) {
+        var addr = phone.object.uri
+        if (addr && addr.length > 0) {
+          if (addr.indexOf('tel:') === 0) {
+            addr = addr.slice(4)
+          }
+          profile.phones.push(addr)
+        }
+      })
+    }
+
+    var homepages = g.statementsMatching(webidRes, FOAF('homepage'))
+    if (homepages.length > 0) {
+      profile.homepages = []
+      homepages.forEach(function (homepage) {
+        var url = homepage.object.uri
+        if (url && url.length > 0) {
+          profile.homepages.push(url)
+        }
+      })
     }
 
     var inbox = g.any(webidRes, SOLID('inbox'))
     if (inbox) {
       profile.inbox = inbox.uri
     }
+
+    console.log(profile)
 
     return profile
   }
@@ -240,17 +274,23 @@
     user.classList.remove('slide-out')
     user.classList.add('slide-in')
 
+    extendedInfo.innerHTML = '<div class="text-center">' +
+      ' <h4>Loading profile...</h4>' +
+      ' <div class="loading"></div>' +
+      '</div>'
+
     Solid.identity.getProfile(webid)
     .then(function (resp) {
       var profile = importSolidProfile(resp)
       if (!profile) {
         addFeedback('error', 'Error parsing user profile data')
       }
-      quickLook(profile, profileInfo)
+      extendedInfo.innerHTML = ''
+      extendedLook(profile, extendedInfo)
     })
     .catch(function (err) {
-      console.log(err)
-      addFeedback('error', 'Could not load profile: ' + err.statusText)
+      console.log('Could not load profile:', err)
+      addFeedback('error', 'Could not load profile data')
     })
   }
 
@@ -259,10 +299,44 @@
     user.classList.add('slide-out')
   }
 
-  var quickLook = function (profile, parent) {
-    // clear parent first
-    parent.innerHTML = ''
+  var extendedLook = function (profile, parent) {
+    // Photo, name(s), company, email(s), phone(s)
+    var card = document.createElement('div')
+    card.classList.add('card', 'no-border')
 
+    var image = document.createElement('div')
+    card.appendChild(image)
+
+    if (profile.picture) {
+      var picture = document.createElement('img')
+      picture.classList.add('img-responsive', 'centered', 'circle')
+      picture.src = profile.picture
+      image.appendChild(picture)
+    }
+
+    var body = document.createElement('div')
+    card.appendChild(body)
+    body.classList.add('card-body', 'text-center')
+
+    if (profile.name) {
+      var name = document.createElement('h4')
+      name.classList.add('card-title')
+      name.innerHTML = profile.name
+      body.appendChild(name)
+    }
+
+    if (profile.email) {
+      var email = document.createElement('h6')
+      email.classList.add('card-meta')
+      email.innerHTML = profile.email
+      body.appendChild(email)
+    }
+
+    // finish
+    parent.appendChild(card)
+  }
+
+  var quickLook = function (profile, parent) {
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
@@ -288,10 +362,10 @@
       header.appendChild(name)
     }
 
-    if (profile.email) {
+    if (profile.emails) {
       var email = document.createElement('h6')
       email.classList.add('card-meta')
-      email.innerHTML = profile.email
+      email.innerHTML = profile.emails[0]
       header.appendChild(email)
     }
 
@@ -354,7 +428,6 @@
   // @param msgType {string} one value of type [info, success, error]
   // @param msg {string} message to send
   var addFeedback = function (msgType, msg) {
-    msgType = msgType || 'info'
     var timeout = 3000
 
     switch (msgType) {
@@ -364,13 +437,19 @@
       case 'error':
         msgType = 'toast-danger'
         break
-      default:
+      case 'info':
         msgType = 'toast-primary'
+        break
+      default:
+        msgType = ''
         break
     }
 
     var div = document.createElement('div')
-    div.classList.add('toast', 'centered', msgType)
+    div.classList.add('toast', 'centered')
+    if (msgType && msgType.length > 0) {
+      div.classList.add(msgType)
+    }
     var btn = document.createElement('button')
     btn.classList.add('btn', 'btn-clear', 'float-right')
     // add event listener
@@ -401,10 +480,15 @@
   var closeModal = function () {
     hideElement(newModal)
     hideElement(overlay)
+    showElement(lookupElement)
+    showElement(infoButtons)
     overlay.style.display = 'none'
   }
 
   var showModal = function () {
+    // clear the contents of the modal
+    profileInfo.innerHTML = ''
+    // show modal
     showElement(newModal)
     showElement(overlay)
     overlay.style.display = 'flex'
@@ -477,7 +561,6 @@
     searchClass: 'search-connection',
     valueNames: [
       'name',
-      'email',
       'status',
       { attr: 'id', name: 'webid', evt: { action: 'click', fn: viewProfile } },
       { attr: 'src', name: 'picture' },
