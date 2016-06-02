@@ -9,7 +9,7 @@ html, body {
 
 .main {
   height: 100%;
-  padding-bottom: 5rem;
+  /*padding-bottom: 5rem;*/
 }
 
 .welcome {
@@ -100,6 +100,10 @@ html, body {
   padding: 1rem;
   border-bottom: 1px solid #ccc;
 }
+.user-picture {
+  height: 15rem;
+  width: auto;
+}
 .card-meta {
   color: #333 !important;
 }
@@ -109,7 +113,7 @@ html, body {
 }
 
 .status {
-  color: #32b643;
+  color: #32b643 !important;
   font-size: 1.1rem;
   text-transform: uppercase;
 }

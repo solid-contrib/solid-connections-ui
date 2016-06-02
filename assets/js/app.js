@@ -49,31 +49,31 @@
   var searchFields = ['name']
 
   var items = [
-    {
-      name: 'John Doe',
-      emails: ['john@doe.com'],
-      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png',
-      webid: 'https://john.com/profile#me'
-    },
-    {
-      name: 'Jane Doe',
-      emails: ['jane@doe.com'],
-      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png',
-      webid: 'https://jane.org/card#me'
-    },
-    {
-      name: 'Adam Crow',
-      emails: ['james@crow.com'],
-      picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
-      status: 'connected',
-      webid: 'https://adam.org/card#me'
-    },
-    {
-      name: 'Mike Smith',
-      emails: ['m@smith.net'],
-      initials: 'M S',
-      picture: 'assets/images/empty.png'
-    }
+    // {
+    //   name: 'John Doe',
+    //   emails: ['john@doe.com'],
+    //   picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png',
+    //   webid: 'https://john.com/profile#me'
+    // },
+    // {
+    //   name: 'Jane Doe',
+    //   emails: ['jane@doe.com'],
+    //   picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png',
+    //   webid: 'https://jane.org/card#me'
+    // },
+    // {
+    //   name: 'Adam Crow',
+    //   emails: ['james@crow.com'],
+    //   picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
+    //   status: 'connected',
+    //   webid: 'https://adam.org/card#me'
+    // },
+    // {
+    //   name: 'Mike Smith',
+    //   emails: ['m@smith.net'],
+    //   initials: 'M S',
+    //   picture: 'assets/images/empty.png'
+    // }
   ]
 
   // ------------ END LIST CONF ------------
@@ -109,7 +109,7 @@
     showElement(lookupElement)
     showElement(infoButtons)
     if (uList.get('webid', profile.webid).length > 0) {
-      addFeedback('', 'You are already connected to this user')
+      addFeedback('', 'You have already added this person')
       return
     }
     var item = {}
@@ -150,7 +150,7 @@
     .then(function (resp) {
       var profile = importSolidProfile(resp)
       if (!profile) {
-        addFeedback('error', 'Error parsing user profile data')
+        addFeedback('error', 'Error parsing profile data')
       }
       // clear the contents of the modal
       hideElement(lookupElement)
@@ -273,6 +273,7 @@
   var viewProfile = function (webid) {
     user.classList.remove('slide-out')
     user.classList.add('slide-in')
+    hideElement(actionsElement)
 
     extendedInfo.innerHTML = '<div class="text-center">' +
       ' <h4>Loading profile...</h4>' +
@@ -283,7 +284,7 @@
     .then(function (resp) {
       var profile = importSolidProfile(resp)
       if (!profile) {
-        addFeedback('error', 'Error parsing user profile data')
+        addFeedback('error', 'Error parsing profile data')
       }
       extendedInfo.innerHTML = ''
       extendedLook(profile, extendedInfo)
@@ -297,6 +298,7 @@
   var cancelView = function () {
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
+    showElement(actionsElement)
   }
 
   var extendedLook = function (profile, parent) {
@@ -305,31 +307,87 @@
     card.classList.add('card', 'no-border')
 
     var image = document.createElement('div')
+    image.classList.add('text-center')
     card.appendChild(image)
 
     if (profile.picture) {
       var picture = document.createElement('img')
-      picture.classList.add('img-responsive', 'centered', 'circle')
+      picture.classList.add('img-responsive', 'centered', 'circle', 'user-picture')
       picture.src = profile.picture
       image.appendChild(picture)
     }
 
     var body = document.createElement('div')
     card.appendChild(body)
-    body.classList.add('card-body', 'text-center')
+    body.classList.add('card-body')
 
     if (profile.name) {
       var name = document.createElement('h4')
-      name.classList.add('card-title')
+      name.classList.add('card-title', 'text-center')
       name.innerHTML = profile.name
       body.appendChild(name)
     }
 
-    if (profile.email) {
-      var email = document.createElement('h6')
-      email.classList.add('card-meta')
-      email.innerHTML = profile.email
-      body.appendChild(email)
+    if (!profile.status) {
+      profile.status = 'pending'
+    }
+    var status = document.createElement('h4')
+    status.classList.add('card-meta', 'text-center', 'status', 'green')
+    status.innerHTML = profile.status
+    body.appendChild(status)
+
+    if (profile.emails) {
+      var section = document.createElement('div')
+      var label = document.createElement('h6')
+      var icon = document.createElement('i')
+      icon.classList.add('fa', 'fa-envelope-o')
+      label.appendChild(icon)
+      label.innerHTML += ' Emails'
+      section.appendChild(label)
+      body.appendChild(section)
+
+      profile.emails.forEach(function (addr) {
+        var div = document.createElement('div')
+        div.classList.add('card-meta')
+        div.innerHTML = addr
+        body.appendChild(div)
+      })
+    }
+
+    if (profile.phones) {
+      section = document.createElement('div')
+      label = document.createElement('h6')
+      icon = document.createElement('i')
+      icon.classList.add('fa', 'fa-phone')
+      label.appendChild(icon)
+      label.innerHTML += ' Phones'
+      section.appendChild(label)
+      body.appendChild(section)
+
+      profile.phones.forEach(function (phone) {
+        var div = document.createElement('div')
+        div.classList.add('card-meta')
+        div.innerHTML = phone
+        body.appendChild(div)
+      })
+    }
+
+    if (profile.homepages) {
+      section = document.createElement('div')
+      label = document.createElement('h6')
+      icon = document.createElement('i')
+      icon.classList.add('fa', 'fa-link')
+      label.appendChild(icon)
+      label.innerHTML += ' Homepages'
+      section.appendChild(label)
+      body.appendChild(section)
+
+      profile.homepages.forEach(function (page) {
+        var div = document.createElement('div')
+        div.classList.add('card-meta')
+        div.innerHTML = page
+        body.appendChild(div)
+      })
     }
 
     // finish
