@@ -128,6 +128,8 @@
     hideElement(welcome)
     showElement(searchElement)
     showElement(actionsElement)
+    // clear the info profile
+    profileInfo.innerHTML = ''
     addFeedback('success', 'You have a new connection!')
     uList.sort('name', { order: 'asc' })
   }
@@ -153,7 +155,7 @@
       hideElement(lookupElement)
       hideElement(infoButtons)
 
-      decorateProfile(profile, profileInfo)
+      quickLook(profile, profileInfo)
       hideLoadingButton(addNewBtn)
     })
     .catch(function (err) {
@@ -235,14 +237,32 @@
   }
 
   var viewProfile = function (webid) {
+    user.classList.remove('slide-out')
     user.classList.add('slide-in')
+
+    Solid.identity.getProfile(webid)
+    .then(function (resp) {
+      var profile = importSolidProfile(resp)
+      if (!profile) {
+        addFeedback('error', 'Error parsing user profile data')
+      }
+      quickLook(profile, profileInfo)
+    })
+    .catch(function (err) {
+      console.log(err)
+      addFeedback('error', 'Could not load profile: ' + err.statusText)
+    })
   }
 
   var cancelView = function () {
+    user.classList.remove('slide-in')
     user.classList.add('slide-out')
   }
 
-  var decorateProfile = function (profile, parent) {
+  var quickLook = function (profile, parent) {
+    // clear parent first
+    parent.innerHTML = ''
+
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
@@ -259,11 +279,11 @@
 
     var header = document.createElement('div')
     card.appendChild(header)
-    header.classList.add('card-header')
+    header.classList.add('card-header', 'text-center')
 
     if (profile.name) {
       var name = document.createElement('h4')
-      name.classList.add('card-title', 'text-center')
+      name.classList.add('card-title')
       name.innerHTML = profile.name
       header.appendChild(name)
     }
@@ -335,7 +355,7 @@
   // @param msg {string} message to send
   var addFeedback = function (msgType, msg) {
     msgType = msgType || 'info'
-    var timeout = 4000
+    var timeout = 3000
 
     switch (msgType) {
       case 'success':
@@ -372,7 +392,9 @@
   // Remove a feedback element
   // @param msg {string} message to send
   var clearFeedback = function (elem) {
-    elem.parentNode.removeChild(elem)
+    if (elem.parentNode) {
+      elem.parentNode.removeChild(elem)
+    }
   }
 
   // ------------ MODAL ------------
@@ -402,7 +424,9 @@
   }
 
   var deleteElement = function (elem) {
-    elem.parentNode.removeChild(elem)
+    if (elem.parentNode) {
+      elem.parentNode.removeChild(elem)
+    }
   }
 
   var showLoadingButton = function (elem) {

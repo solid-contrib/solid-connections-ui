@@ -100,6 +100,9 @@ html, body {
   padding: 1rem;
   border-bottom: 1px solid #ccc;
 }
+.card-meta {
+  color: #333 !important;
+}
 .webid {
   display: flex;
   width: 100%;

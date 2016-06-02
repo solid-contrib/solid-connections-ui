@@ -52,7 +52,7 @@
         <img src="assets/icons/search.svg" class="icon" />
       </div>
       <div class="flex stretch center">
-        <input id="search" class="form-input search" type="text" placeholder="Search">
+        <input id="search" class="form-input search" type="text" placeholder="Search by name, email...">
       </div>
       <div id="clear-search" class="flex center clear-search tooltip tooltip-left hidden" data-tooltip="Clear search">
         <img src="assets/icons/cancel.svg" class="icon" />
@@ -73,8 +73,15 @@
     </section>
 
     <section id="user" class="user slider abs">
-      <div class="column col-sm-6 centered">
-        <div class="cancel-view"><img src="assets/icons/back.svg" class="icon" /></div>
+      <div class="row">
+        <div class="column col-sm-6 centered">
+          <div class="cancel-view"><img src="assets/icons/back.svg" class="icon" /></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="column col-sm-6 centered">
+          <div id="profile-info" class="content"></div>
+        </div>
       </div>
     </section>
 
@@ -93,7 +100,7 @@
 
 
   <div id="actions" class="col-sm-6 centered fixed bottom-sticky hidden">
-    <div class="btn-group btn-group-block centered tooltip" data-tooltip="Connect with someone">
+    <div class="btn-group btn-group-block centered">
       <button class="btn btn-lg show-new btn-sticky-bottom"><i class="fa fa-plus-circle" aria-hidden="true"></i> Connect</button>
     </div>
   </div>
