@@ -32,7 +32,7 @@
 
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card center">' +
-    '<div class="webid">' +
+    '<div class="webid tooltip" data-tooltip="View details">' +
     '<div class="center">' +
     ' <figure class="avatar avatar-xl initials">' +
     '   <img class="picture">' +
@@ -40,8 +40,7 @@
     '</div>' +
     '<div class="column center">' +
     ' <div class="name"></div>' +
-    ' <div class="email"></div>' +
-    ' <div class="status green"></div>' +
+    ' <div class="url grey"></div>' +
     '</div>' +
     '</div>' +
   '</div>'
@@ -109,11 +108,11 @@
     showElement(lookupElement)
     showElement(infoButtons)
     if (uList.get('webid', profile.webid).length > 0) {
-      addFeedback('', 'You have already added this person')
+      addFeedback('', 'You are already connected with this person')
       return
     }
     var item = {}
-    item.webid = profile.webid
+    item.webid = item.url = profile.webid
     item.name = profile.name
     if (profile.picture) {
       item.picture = profile.picture
@@ -431,10 +430,14 @@
 
     // remove button
     var remove = document.getElementById('remove')
-    remove.removeEventListener('click', function () {
-      removeDialog
-    })
-    remove.addEventListener('click', function () {
+    var removeBtn = document.createElement('div')
+    remove.appendChild(removeBtn)
+    removeBtn.classList.add('pointer', 'box', 'p-10', 'red')
+    var removeIcon = document.createElement('i')
+    removeBtn.appendChild(removeIcon)
+    removeIcon.classList.add('fa', 'fa-trash-o')
+    removeBtn.innerHTML += ' Remove connection'
+    removeBtn.addEventListener('click', function () {
       removeDialog(profile)
     })
 
@@ -534,14 +537,16 @@
   // @param msgType {string} one value of type [info, success, error]
   // @param msg {string} message to send
   var addFeedback = function (msgType, msg) {
-    var timeout = 2000
+    var timeout = 1500
 
     switch (msgType) {
       case 'success':
         msgType = 'toast-success'
+        timeout = 1000
         break
       case 'error':
         msgType = 'toast-danger'
+        timeout = 2000
         break
       case 'info':
         msgType = 'toast-primary'
@@ -633,7 +638,7 @@
     title.classList.add('modal-title')
     title.innerHTML = 'Delete Connection'
 
-    var body = document.createElement('div')
+    body = document.createElement('div')
     container.appendChild(body)
     body.classList.add('modal-body')
     body.innerHTML = '<h4 class"text-center">Are you sure you want to delete this connection?</h4>'
@@ -743,6 +748,7 @@
     valueNames: [
       'name',
       'status',
+      'url',
       { attr: 'id', name: 'webid', evt: { action: 'click', fn: viewProfile } },
       { attr: 'src', name: 'picture' },
       { attr: 'class', name: 'image' },

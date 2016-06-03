@@ -113,6 +113,7 @@ html, body {
 .webid {
   display: flex;
   width: 100%;
+  font-weight: 200;
 }
 
 .status {
@@ -121,9 +122,16 @@ html, body {
   text-transform: uppercase;
 }
 
+.name {
+  font-size: 1.4em;
+  line-height: 1;
+  font-weight: 200;
+}
+
 .picture {
   border: 0;
 }
+
 .initials {
   background-color: #5764c6;
 }
@@ -184,6 +192,10 @@ html, body {
 
 .no-h3-top {
   margin-top: -2.5rem;
+}
+
+.no-margin {
+  margin: 0;
 }
 
 /* SLIDER */
