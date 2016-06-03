@@ -93,6 +93,7 @@
         showElement(noUsersFound)
       }
     } else {
+      hideElement(noUsersFound)
       uList.search()
     }
   }
