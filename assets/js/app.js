@@ -275,8 +275,6 @@
       profile.inbox = inbox.uri
     }
 
-    console.log(profile)
-
     return profile
   }
 
@@ -434,7 +432,7 @@
     remove.innerHTML = ''
     var removeBtn = document.createElement('button')
     remove.appendChild(removeBtn)
-    removeBtn.classList.add('btn')
+    removeBtn.classList.add('btn', 'btn-link')
     var removeIcon = document.createElement('i')
     removeBtn.appendChild(removeIcon)
     removeIcon.classList.add('fa', 'fa-trash-o')
