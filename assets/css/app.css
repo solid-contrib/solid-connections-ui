@@ -31,7 +31,7 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 100;
+  z-index: 1000;
   background-color: rgba(0,0,0,0.5); /*dim the background*/
 }
 
@@ -68,12 +68,12 @@ html, body {
   border-bottom: 1px solid #ccc;
 }
 
-.cancel-view {
-  cursor: pointer
+.pointer {
+  cursor: pointer;
 }
 
 .icon {
-  width: 20px;
+  height: 20px;
 }
 
 .bottom-sticky {
@@ -107,6 +107,9 @@ html, body {
 .card-meta {
   color: #333 !important;
 }
+.card-body {
+  font-weight: 200 !important;
+}
 .webid {
   display: flex;
   width: 100%;
@@ -117,9 +120,7 @@ html, body {
   font-size: 1.1rem;
   text-transform: uppercase;
 }
-.email {
-  color: #999;
-}
+
 .picture {
   border: 0;
 }
@@ -146,12 +147,39 @@ html, body {
   align-self: center;
 }
 
+.center-page {
+  align-items: center;
+  justify-content: center;
+}
+
 .stretch {
   flex: 1;
 }
 
 .hidden {
   display: none;
+}
+
+.flex-right {
+  flex: 1;
+  flex-direction: row-reverse;
+}
+
+.flex-left {
+  flex: 1;
+  flex-direction: row;
+}
+
+.grey {
+  color: #999 !important;
+}
+
+.red {
+  color: red;
+}
+
+.p-10 {
+  padding: 1rem;
 }
 
 /* SLIDER */
@@ -161,13 +189,13 @@ html, body {
 }
 
 .slide-in {
-    animation: slide-in 0.2s forwards;
-    -webkit-animation: slide-in 0.2s forwards;
+    animation: slide-in 0.3s forwards;
+    -webkit-animation: slide-in 0.3s forwards;
 }
 
 .slide-out {
-    animation: slide-out 0.5s forwards;
-    -webkit-animation: slide-out 0.2s forwards;
+    animation: slide-out 0.3s forwards;
+    -webkit-animation: slide-out 0.3s forwards;
 }
 
 @keyframes slide-in {

@@ -135,6 +135,16 @@
     uList.sort('name', { order: 'asc' })
   }
 
+  var deleteConnection = function (webid) {
+    uList.remove('webid', webid)
+    if (uList.visibleItems.length === 0) {
+      hideElement(searchElement)
+      hideElement(actionsElement)
+      showElement(welcome)
+    }
+    cancelView()
+  }
+
   // Fetch a WebID profile using Solid.js
   var findWebID = function () {
     var webid = document.getElementById('webid').value
@@ -298,11 +308,9 @@
   var cancelView = function () {
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
-    showElement(actionsElement)
   }
 
   var extendedLook = function (profile, parent) {
-    // Photo, name(s), company, email(s), phone(s)
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
@@ -329,66 +337,106 @@
     }
 
     if (!profile.status) {
-      profile.status = 'pending'
+      profile.status = 'invitation sent'
     }
     var status = document.createElement('h4')
     status.classList.add('card-meta', 'text-center', 'status', 'green')
     status.innerHTML = profile.status
     body.appendChild(status)
 
-    if (profile.emails) {
-      var section = document.createElement('div')
-      var label = document.createElement('h6')
-      var icon = document.createElement('i')
-      icon.classList.add('fa', 'fa-envelope-o')
-      label.appendChild(icon)
-      label.innerHTML += ' Emails'
-      section.appendChild(label)
-      body.appendChild(section)
+    var section = document.createElement('div')
+    var label = document.createElement('h6')
+    var icon = document.createElement('i')
+    icon.classList.add('fa', 'fa-envelope-o')
+    label.appendChild(icon)
+    label.innerHTML += ' Emails'
+    section.appendChild(label)
+    body.appendChild(section)
 
+    if (profile.emails) {
       profile.emails.forEach(function (addr) {
         var div = document.createElement('div')
         div.classList.add('card-meta')
         div.innerHTML = addr
         body.appendChild(div)
       })
+    } else {
+      var div = document.createElement('div')
+      div.classList.add('card-meta', 'grey')
+      div.innerHTML = 'No email addresses found.'
+      body.appendChild(div)
     }
 
-    if (profile.phones) {
-      section = document.createElement('div')
-      label = document.createElement('h6')
-      icon = document.createElement('i')
-      icon.classList.add('fa', 'fa-phone')
-      label.appendChild(icon)
-      label.innerHTML += ' Phones'
-      section.appendChild(label)
-      body.appendChild(section)
+    section = document.createElement('div')
+    label = document.createElement('h6')
+    icon = document.createElement('i')
+    icon.classList.add('fa', 'fa-phone')
+    label.appendChild(icon)
+    label.innerHTML += ' Phones'
+    section.appendChild(label)
+    body.appendChild(section)
 
+    if (profile.phones) {
       profile.phones.forEach(function (phone) {
         var div = document.createElement('div')
         div.classList.add('card-meta')
         div.innerHTML = phone
         body.appendChild(div)
       })
+    } else {
+      div = document.createElement('div')
+      div.classList.add('card-meta', 'grey')
+      div.innerHTML = 'No phone numbers found.'
+      body.appendChild(div)
     }
 
-    if (profile.homepages) {
-      section = document.createElement('div')
-      label = document.createElement('h6')
-      icon = document.createElement('i')
-      icon.classList.add('fa', 'fa-link')
-      label.appendChild(icon)
-      label.innerHTML += ' Homepages'
-      section.appendChild(label)
-      body.appendChild(section)
+    section = document.createElement('div')
+    label = document.createElement('h6')
+    icon = document.createElement('i')
+    icon.classList.add('fa', 'fa-link')
+    label.appendChild(icon)
+    label.innerHTML += ' Homepages'
+    section.appendChild(label)
+    body.appendChild(section)
 
+    if (profile.homepages) {
       profile.homepages.forEach(function (page) {
         var div = document.createElement('div')
         div.classList.add('card-meta')
         div.innerHTML = page
         body.appendChild(div)
       })
+    } else {
+      div = document.createElement('div')
+      div.classList.add('card-meta', 'grey')
+      div.innerHTML = 'No homepage address found.'
+      body.appendChild(div)
     }
+
+    // Actions
+    var footer = document.createElement('div')
+    card.appendChild(footer)
+    footer.classList.add('card-footer', 'text-center')
+
+    // new contact button
+    var button = document.createElement('button')
+    footer.appendChild(button)
+    button.classList.add('btn', 'btn-lg', 'btn-primary')
+    button.innerHTML = 'Create contact'
+    button.addEventListener('click', function () {
+      addConnection(profile)
+      deleteElement(card)
+      closeModal()
+    }, false)
+
+    // remove button
+    var remove = document.getElementById('remove')
+    remove.removeEventListener('click', function () {
+      removeDialog
+    })
+    remove.addEventListener('click', function () {
+      removeDialog(profile)
+    })
 
     // finish
     parent.appendChild(card)
@@ -486,7 +534,7 @@
   // @param msgType {string} one value of type [info, success, error]
   // @param msg {string} message to send
   var addFeedback = function (msgType, msg) {
-    var timeout = 3000
+    var timeout = 2000
 
     switch (msgType) {
       case 'success':
@@ -550,6 +598,69 @@
     showElement(newModal)
     showElement(overlay)
     overlay.style.display = 'flex'
+  }
+
+  var removeDialog = function (profile) {
+    var body = document.getElementsByTagName('body')[0]
+    var moverlay = document.createElement('div')
+    body.appendChild(moverlay)
+    moverlay.classList.add('modal-overlay', 'flex', 'center-page')
+    var modal = document.createElement('div')
+    moverlay.appendChild(modal)
+    modal.classList.add('modal-temp', 'modal-sm')
+
+    var container = document.createElement('div')
+    modal.appendChild(container)
+    container.classList.add('modal-container')
+    container.setAttribute('role', 'document')
+
+    var header = document.createElement('div')
+    container.appendChild(header)
+    header.classList.add('modal-header')
+
+    var cancelTop = document.createElement('button')
+    header.appendChild(cancelTop)
+    cancelTop.classList.add('btn', 'btn-clear', 'float-right', 'cancel-new', 'tooltip')
+    cancelTop.setAttribute('type', 'button')
+    cancelTop.setAttribute('data-tooltip', 'Close')
+    cancelTop.setAttribute('aria-label', 'Close')
+
+    var title = document.createElement('div')
+    header.appendChild(title)
+    title.classList.add('modal-title')
+    title.innerHTML = 'Delete Connection'
+
+    var mbody = document.createElement('div')
+    container.appendChild(mbody)
+    mbody.classList.add('modal-body')
+    mbody.innerHTML = '<h4 class"text-center">Are you sure you want to delete this connection?</h4>'
+
+    var mfooter = document.createElement('div')
+    container.appendChild(mfooter)
+    mfooter.classList.add('modal-footer')
+
+    var cancel = document.createElement('button')
+    mfooter.appendChild(cancel)
+    cancel.classList.add('btn', 'btn-link')
+    cancel.innerHTML = 'Cancel'
+
+    var del = document.createElement('button')
+    mfooter.appendChild(del)
+    del.classList.add('btn', 'btn-primary')
+    del.innerHTML = 'Yes, delete it'
+
+    cancelTop.addEventListener('click', function () {
+      moverlay.parentNode.removeChild(moverlay)
+    }, false)
+
+    cancel.addEventListener('click', function () {
+      moverlay.parentNode.removeChild(moverlay)
+    }, false)
+
+    del.addEventListener('click', function () {
+      moverlay.parentNode.removeChild(moverlay)
+      deleteConnection(profile.webid)
+    }, false)
   }
 
   // ------------ UTILITY ------------
