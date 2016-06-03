@@ -431,9 +431,10 @@
 
     // remove button
     var remove = document.getElementById('remove')
-    var removeBtn = document.createElement('div')
+    remove.innerHTML = ''
+    var removeBtn = document.createElement('button')
     remove.appendChild(removeBtn)
-    removeBtn.classList.add('pointer', 'box', 'p-10', 'red', 'center')
+    removeBtn.classList.add('btn')
     var removeIcon = document.createElement('i')
     removeBtn.appendChild(removeIcon)
     removeIcon.classList.add('fa', 'fa-trash-o')
