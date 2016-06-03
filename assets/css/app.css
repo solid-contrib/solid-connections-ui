@@ -182,6 +182,10 @@ html, body {
   padding: 1rem;
 }
 
+.no-h3-top {
+  margin-top: -2.5rem;
+}
+
 /* SLIDER */
 .slider {
     transform: translateX(-100%);
@@ -214,6 +218,79 @@ html, body {
 @-webkit-keyframes slide-out {
     0% { -webkit-transform: translateX(0%); }
     100% { -webkit-transform: translateX(-100%); }
+}
+
+
+/* Success icon */
+/************** check sign animations **************/
+@-webkit-keyframes checkmark {
+    0% {
+        stroke-dashoffset: 50px
+    }
+
+    100% {
+        stroke-dashoffset: 0
+    }
+}
+
+@-ms-keyframes checkmark {
+    0% {
+        stroke-dashoffset: 50px
+    }
+
+    100% {
+        stroke-dashoffset: 0
+    }
+}
+
+@keyframes checkmark {
+    0% {
+        stroke-dashoffset: 50px
+    }
+
+    100% {
+        stroke-dashoffset: 0
+    }
+}
+
+@-webkit-keyframes checkmark-circle {
+    0% {
+        stroke-dashoffset: 240px
+    }
+
+    100% {
+        stroke-dashoffset: 480px
+    }
+}
+
+@-ms-keyframes checkmark-circle {
+    0% {
+        stroke-dashoffset: 240px
+    }
+
+    100% {
+        stroke-dashoffset: 480px
+    }
+}
+
+@keyframes checkmark-circle {
+    0% {
+        stroke-dashoffset: 240px
+    }
+
+    100% {
+        stroke-dashoffset: 480px
+    }
+}
+
+.icon-success svg path {
+    -webkit-animation: checkmark 0.25s ease-in-out 0.7s backwards;
+    animation: checkmark 0.25s ease-in-out 0.7s backwards
+}
+
+.icon-success svg circle {
+    -webkit-animation: checkmark-circle 0.6s ease-in-out backwards;
+    animation: checkmark-circle 0.6s ease-in-out backwards
 }
 
 /* styles for truncate '...' */

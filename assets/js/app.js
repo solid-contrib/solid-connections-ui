@@ -418,16 +418,16 @@
     card.appendChild(footer)
     footer.classList.add('card-footer', 'text-center')
 
-    // new contact button
-    var button = document.createElement('button')
-    footer.appendChild(button)
-    button.classList.add('btn', 'btn-lg', 'btn-primary')
-    button.innerHTML = 'Create contact'
-    button.addEventListener('click', function () {
-      addConnection(profile)
-      deleteElement(card)
-      closeModal()
-    }, false)
+    // // new contact button
+    // var button = document.createElement('button')
+    // footer.appendChild(button)
+    // button.classList.add('btn', 'btn-lg', 'btn-primary')
+    // button.innerHTML = 'Create contact'
+    // button.addEventListener('click', function () {
+    //   addConnection(profile)
+    //   deleteElement(card)
+    //   closeModal()
+    // }, false)
 
     // remove button
     var remove = document.getElementById('remove')
@@ -624,41 +624,53 @@
     cancelTop.setAttribute('type', 'button')
     cancelTop.setAttribute('data-tooltip', 'Close')
     cancelTop.setAttribute('aria-label', 'Close')
+    cancelTop.addEventListener('click', function () {
+      moverlay.parentNode.removeChild(moverlay)
+    }, false)
 
     var title = document.createElement('div')
     header.appendChild(title)
     title.classList.add('modal-title')
     title.innerHTML = 'Delete Connection'
 
-    var mbody = document.createElement('div')
-    container.appendChild(mbody)
-    mbody.classList.add('modal-body')
-    mbody.innerHTML = '<h4 class"text-center">Are you sure you want to delete this connection?</h4>'
+    var body = document.createElement('div')
+    container.appendChild(body)
+    body.classList.add('modal-body')
+    body.innerHTML = '<h4 class"text-center">Are you sure you want to delete this connection?</h4>'
 
-    var mfooter = document.createElement('div')
-    container.appendChild(mfooter)
-    mfooter.classList.add('modal-footer')
+    var footer = document.createElement('div')
+    container.appendChild(footer)
+    footer.classList.add('modal-footer')
 
     var cancel = document.createElement('button')
-    mfooter.appendChild(cancel)
+    footer.appendChild(cancel)
     cancel.classList.add('btn', 'btn-link')
     cancel.innerHTML = 'Cancel'
-
-    var del = document.createElement('button')
-    mfooter.appendChild(del)
-    del.classList.add('btn', 'btn-primary')
-    del.innerHTML = 'Yes, delete it'
-
-    cancelTop.addEventListener('click', function () {
-      moverlay.parentNode.removeChild(moverlay)
-    }, false)
-
     cancel.addEventListener('click', function () {
       moverlay.parentNode.removeChild(moverlay)
     }, false)
 
+    var del = document.createElement('button')
+    footer.appendChild(del)
+    del.classList.add('btn', 'btn-primary')
+    del.innerHTML = 'Yes, delete it'
     del.addEventListener('click', function () {
-      moverlay.parentNode.removeChild(moverlay)
+      header.innerHTML = ''
+      footer.innerHTML = ''
+      body.innerHTML = `<div class="icon-success svg text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="72px" height="72px">
+          <g fill="none" stroke="#43C47A" stroke-width="2">
+            <circle cx="36" cy="36" r="35" style="stroke-dasharray:240px, 240px; stroke-dashoffset: 480px;"></circle>
+            <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
+          </g>
+        </svg>
+        <h6 class="green">Success!</h6>
+      </div>`
+
+      window.setTimeout(function () {
+        moverlay.parentNode.removeChild(moverlay)
+      }, 1500)
+
       deleteConnection(profile.webid)
     }, false)
   }
