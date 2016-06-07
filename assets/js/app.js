@@ -1,12 +1,8 @@
-(function () {
+var Conn = (function () {
   var $rdf = window.$rdf
-  // common vocabs
-  // var RDF = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#')
-  var FOAF = $rdf.Namespace('http://xmlns.com/foaf/0.1/')
-  // var DCT = $rdf.Namespace('http://purl.org/dc/terms/')
-  // var LDP = $rdf.Namespace('http://www.w3.org/ns/ldp#')
-  // var SIOC = $rdf.Namespace('http://rdfs.org/sioc/ns#')
-  var SOLID = $rdf.Namespace('http://www.w3.org/ns/solid/terms#')
+
+  // constants
+  const appContainer = 'connections'
 
   // init static elements
   var welcome = document.getElementById('welcome')
@@ -31,7 +27,7 @@
   var Solid = require('solid')
 
   // ------------ LIST CONF ------------
-  var connectionTemplate = '<div class="user-card center">' +
+  var connectionTemplate = '<div class="user-card pointer center">' +
     '<div class="webid tooltip" data-tooltip="View details">' +
     '<div class="center">' +
     ' <figure class="avatar avatar-xl initials">' +
@@ -77,6 +73,108 @@
 
   // ------------ END LIST CONF ------------
 
+  // ------------ TYPE REGISTRY ------------
+  var registerApp = function (webid) {
+    return Solid.identity.getProfile(webid)
+      .then(function (profile) {
+        // We need to register
+        if (!profile.typeIndexListed.uri) {
+          console.log('No registry found')
+          // Create typeIndex
+          // console.log(profile)
+          profile.initTypeRegistry().then(function (profile) {
+            registerType(profile)
+          })
+        } else {
+          console.log('Found registry', profile.typeIndexListed.uri)
+          // Load registry and find location for data
+          // TODO add ConnectionsIndex to the solid terms vocab
+          profile.loadTypeRegistry().then(function (profile) {
+            var regs = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+            if (regs.length === 0) {
+              // register
+              registerType(profile)
+            } else {
+              var uris = []
+              regs.forEach(function (loc) {
+                uris.push(loc.locationUri)
+              })
+              loadConnections(uris)
+            }
+          })
+        }
+      })
+      .catch(function (err) {
+        console.log('Could not load profile:', err)
+        addFeedback('error', 'Could not load profile data')
+      })
+  }
+
+  var registerType = function (profile) {
+    if (profile.storage.length > 0) {
+      Solid.web.createContainer(profile.storage, appContainer, {})
+        .then(function (meta) {
+          var classToRegister = Solid.vocab.solid('PublicConnections')
+          // TODO add UI for storage selection
+          var locationToRegister = Solid.util.absoluteUrl(profile.storage[0], meta.url)
+          locationToRegister += '/pubIndex.ttl'
+          var isListed = true
+          profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
+            .then(function (profile) {
+              var regs = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+              var uris = []
+              regs.forEach(function (loc) {
+                uris.push(loc.locationUri)
+              })
+              loadConnections(uris)
+            })
+            .catch(function (err) {
+              console.log(profile)
+              console.log('Could not register data type', err)
+              addFeedback('error', 'Could not register data type')
+            })
+        })
+        .catch(function (err) {
+          console.log('Could not create app folder', err)
+          addFeedback('error', 'Could not create app folder')
+        })
+    }
+  }
+
+  // -------------- END TYPE REGISTRY --------------
+
+  var loadConnections = function (locations) {
+    if (!locations) {
+      console.log('No data source provided for loading connections')
+    }
+    locations.forEach(function (uri) {
+      console.log('Loading connections from', uri)
+      Solid.web.get(uri)
+        .then(function (response) {
+          var g = response.parsedGraph()
+          var connections = g.statementsMatching(
+            undefined,
+            Solid.vocab.rdf('type'),
+            Solid.vocab.foaf('Person')
+          )
+          console.log('Connections:', connections)
+          connections.forEach(function (person) {
+            var profile = {}
+            profile.webid = person.subject.uri
+            var name = g.any(person.subject, Solid.vocab.foaf('name'))
+            if (name) {
+              profile.name = name.value
+            }
+            var picture = g.any(person.subject, Solid.vocab.foaf('img'))
+            if (picture) {
+              profile.picture = picture.uri
+            }
+            addConnection(profile)
+          })
+        })
+    })
+  }
+
   // Search the connections list for a given value
   // @param fields {array}
   var searchList = function (fields) {
@@ -98,6 +196,7 @@
     }
   }
 
+  // Reset/clear search field and show/hide elements
   var clearSearchList = function () {
     hideElement(clearSearch)
     hideElement(noUsersFound)
@@ -105,10 +204,18 @@
     uList.search()
   }
 
-  var addConnection = function (profile) {
+  // Add a connected user to the list and sort the list
+  // @param profile {object} Contains fields contained in the index document
+  // @param sort {string} Value to use for sorting (name, email, etc.)
+  // @param order {string} Value to use for ordering (asc / desc)
+  // @param verbose {bool} If true, show feedback to the user
+  var addConnection = function (profile, sort, order, verbose) {
+    sort = sort || 'name'
+    order = order || 'asc'
+
     showElement(lookupElement)
     showElement(infoButtons)
-    if (uList.get('webid', profile.webid).length > 0) {
+    if (uList.get('webid', profile.webid).length > 0 && verbose) {
       addFeedback('', 'You are already connected with this person')
       return
     }
@@ -124,15 +231,17 @@
     if (profile.email) {
       item.picture = profile.picture
     }
-    item.status = 'invitation sent'
+    item.status = profile.status || 'invitation sent'
     uList.add(item)
     hideElement(welcome)
     showElement(searchElement)
     showElement(actionsElement)
     // clear the info profile
     profileInfo.innerHTML = ''
-    addFeedback('success', 'You have a new connection!')
-    uList.sort('name', { order: 'asc' })
+    if (verbose) {
+      addFeedback('success', 'You have a new connection!')
+    }
+    uList.sort(sort, { order: order })
   }
 
   var deleteConnection = function (webid) {
@@ -157,24 +266,24 @@
     showLoadingButton(addNewBtn)
 
     Solid.identity.getProfile(webid)
-    .then(function (resp) {
-      var profile = importSolidProfile(resp)
-      if (!profile) {
-        addFeedback('error', 'Error parsing profile data')
-      }
-      // clear the contents of the modal
-      hideElement(lookupElement)
-      hideElement(infoButtons)
+      .then(function (resp) {
+        var profile = importSolidProfile(resp)
+        if (!profile) {
+          addFeedback('error', 'Error parsing profile data')
+        }
+        // clear the contents of the modal
+        hideElement(lookupElement)
+        hideElement(infoButtons)
 
-      quickLook(profile, profileInfo)
-      hideLoadingButton(addNewBtn)
-    })
-    .catch(function (err) {
-      console.log('Could not load profile:', err)
-      addFeedback('error', 'Could not load profile data')
-      hideLoadingButton(addNewBtn)
-      showElement(infoButtons)
-    })
+        quickLook(profile, profileInfo)
+        hideLoadingButton(addNewBtn)
+      })
+      .catch(function (err) {
+        console.log('Could not load profile:', err)
+        addFeedback('error', 'Could not load profile data')
+        hideLoadingButton(addNewBtn)
+        showElement(infoButtons)
+      })
   }
 
   var importSolidProfile = function (data) {
@@ -192,23 +301,23 @@
     var webidRes = $rdf.sym(webid)
 
     // set name
-    var name = g.any(webidRes, FOAF('name'))
+    var name = g.any(webidRes, Solid.vocab.foaf('name'))
     if (name && name.value.length > 0) {
       profile.name = name.value
     } else {
       profile.name = ''
       // use familyName and givenName instead of full name
-      var givenName = g.any(webidRes, FOAF('givenName'))
+      var givenName = g.any(webidRes, Solid.vocab.foaf('givenName'))
       if (givenName) {
         profile.name += givenName.value
       }
-      var familyName = g.any(webidRes, FOAF('familyName'))
+      var familyName = g.any(webidRes, Solid.vocab.foaf('familyName'))
       if (familyName) {
         profile.name += (givenName) ? ' ' + familyName.value : familyName.value
       }
       // use nick
       if (!givenName && !familyName) {
-        var nick = g.any(webidRes, FOAF('nick'))
+        var nick = g.any(webidRes, Solid.vocab.foaf('nick'))
         if (nick) {
           profile.name = nick.value
         }
@@ -216,13 +325,13 @@
     }
 
     // set picture
-    var img = g.any(webidRes, FOAF('img'))
+    var img = g.any(webidRes, Solid.vocab.foaf('img'))
     var pic
     if (img) {
       pic = img
     } else {
       // check if profile uses depic instead
-      var depic = g.any(webidRes, FOAF('depiction'))
+      var depic = g.any(webidRes, Solid.vocab.foaf('depiction'))
       if (depic) {
         pic = depic
       }
@@ -231,7 +340,7 @@
       profile.picture = pic.uri
     }
 
-    var emails = g.statementsMatching(webidRes, FOAF('mbox'))
+    var emails = g.statementsMatching(webidRes, Solid.vocab.foaf('mbox'))
     if (emails.length > 0) {
       profile.emails = []
       emails.forEach(function (email) {
@@ -245,7 +354,7 @@
       })
     }
 
-    var phones = g.statementsMatching(webidRes, FOAF('phone'))
+    var phones = g.statementsMatching(webidRes, Solid.vocab.foaf('phone'))
     if (phones.length > 0) {
       profile.phones = []
       phones.forEach(function (phone) {
@@ -259,7 +368,7 @@
       })
     }
 
-    var homepages = g.statementsMatching(webidRes, FOAF('homepage'))
+    var homepages = g.statementsMatching(webidRes, Solid.vocab.foaf('homepage'))
     if (homepages.length > 0) {
       profile.homepages = []
       homepages.forEach(function (homepage) {
@@ -270,7 +379,7 @@
       })
     }
 
-    var inbox = g.any(webidRes, SOLID('inbox'))
+    var inbox = g.any(webidRes, Solid.vocab.solid('inbox'))
     if (inbox) {
       profile.inbox = inbox.uri
     }
@@ -289,18 +398,18 @@
       '</div>'
 
     Solid.identity.getProfile(webid)
-    .then(function (resp) {
-      var profile = importSolidProfile(resp)
-      if (!profile) {
-        addFeedback('error', 'Error parsing profile data')
-      }
-      extendedInfo.innerHTML = ''
-      extendedLook(profile, extendedInfo)
-    })
-    .catch(function (err) {
-      console.log('Could not load profile:', err)
-      addFeedback('error', 'Could not load profile data')
-    })
+      .then(function (resp) {
+        var profile = importSolidProfile(resp)
+        if (!profile) {
+          addFeedback('error', 'Error parsing profile data')
+        }
+        extendedInfo.innerHTML = ''
+        extendedLook(profile, extendedInfo)
+      })
+      .catch(function (err) {
+        console.log('Could not load profile:', err)
+        addFeedback('error', 'Could not load profile data')
+      })
   }
 
   var cancelView = function () {
@@ -342,9 +451,25 @@
     status.innerHTML = profile.status
     body.appendChild(status)
 
+    // WebID
     var section = document.createElement('div')
     var label = document.createElement('h6')
     var icon = document.createElement('i')
+    icon.classList.add('fa', 'fa-user')
+    label.appendChild(icon)
+    label.innerHTML += ' WebID'
+    section.appendChild(label)
+    body.appendChild(section)
+
+    var div = document.createElement('div')
+    div.classList.add('card-meta')
+    div.innerHTML = profile.webid
+    body.appendChild(div)
+
+    // Emails
+    section = document.createElement('div')
+    label = document.createElement('h6')
+    icon = document.createElement('i')
     icon.classList.add('fa', 'fa-envelope-o')
     label.appendChild(icon)
     label.innerHTML += ' Emails'
@@ -353,18 +478,19 @@
 
     if (profile.emails) {
       profile.emails.forEach(function (addr) {
-        var div = document.createElement('div')
+        div = document.createElement('div')
         div.classList.add('card-meta')
         div.innerHTML = addr
         body.appendChild(div)
       })
     } else {
-      var div = document.createElement('div')
+      div = document.createElement('div')
       div.classList.add('card-meta', 'grey')
       div.innerHTML = 'No email addresses found.'
       body.appendChild(div)
     }
 
+    // Phones
     section = document.createElement('div')
     label = document.createElement('h6')
     icon = document.createElement('i')
@@ -388,6 +514,7 @@
       body.appendChild(div)
     }
 
+    // Homepages
     section = document.createElement('div')
     label = document.createElement('h6')
     icon = document.createElement('i')
@@ -407,7 +534,7 @@
     } else {
       div = document.createElement('div')
       div.classList.add('card-meta', 'grey')
-      div.innerHTML = 'No homepage address found.'
+      div.innerHTML = 'No homepage addresses found.'
       body.appendChild(div)
     }
 
@@ -767,8 +894,12 @@
     uList.sort('name', { order: 'asc' })
   }
 
+  // register App
+  registerApp('https://deiu.me/profile#me')
+
   // public methods
   return {
-    addFeedback: addFeedback
+    addFeedback: addFeedback,
+    registerApp: registerApp
   }
 })()
