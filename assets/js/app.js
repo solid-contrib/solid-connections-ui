@@ -65,19 +65,23 @@ var Conn = (function () {
           console.log('Found registry', profile.typeIndexListed.uri)
           // Load registry and find location for data
           // TODO add ConnectionsIndex to the solid terms vocab
-          profile.loadTypeRegistry().then(function (profile) {
-            var pub = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
-            var priv = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
-            var indexes = pub.concat(priv)
-            if (indexes.length === 0) {
-              // register
-              registerType(profile)
-            } else {
-              User.webid = profile.webId
-              User.indexes = indexes
-              loadConnections()
-            }
-          })
+          profile.loadTypeRegistry()
+            .then(function (profile) {
+              var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
+              var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+              if (pubIndexes.concat(privIndexes).length === 0) {
+                // register
+                registerType(profile)
+              } else {
+                User.webid = profile.webId
+                User.pubIndexes = pubIndexes
+                User.privIndexes = privIndexes
+                loadConnections()
+              }
+            })
+            .catch(function (err) {
+              console.log('Could not load type registry:', err)
+            })
         }
       })
       .catch(function (err) {
@@ -97,7 +101,7 @@ var Conn = (function () {
           var isListed = false
           profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
             .then(function (profile) {
-              var privIndex = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
+              var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
               classToRegister = Solid.vocab.solid('PublicConnections')
               // TODO add UI for storage selection
               locationToRegister = Solid.util.absoluteUrl(profile.storage[0], meta.url)
@@ -105,9 +109,10 @@ var Conn = (function () {
               isListed = true
               profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
                 .then(function (profile) {
-                  var pubIndex = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+                  var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
                   User.webid = profile.webId
-                  User.indexes = privIndex.concat(pubIndex)
+                  User.pubIndexes = pubIndexes
+                  User.privIndexes = privIndexes
                   loadConnections()
                 })
                 .catch(function (err) {
@@ -130,11 +135,13 @@ var Conn = (function () {
   // -------------- END TYPE REGISTRY --------------
 
   var loadConnections = function () {
-    if (!User.indexes || User.indexes.length === 0) {
+    if (!User.pubIndexes && !User.privIndexes) {
       console.log('No data source provided for loading connections')
       return
     }
-    User.indexes.forEach(function (index) {
+    var indexes = User.privIndexes.concat(User.pubIndexes)
+    console.log(indexes)
+    indexes.forEach(function (index) {
       Solid.web.get(index.locationUri)
         .then(function (response) {
           var g = response.parsedGraph()
@@ -143,7 +150,6 @@ var Conn = (function () {
             Solid.vocab.rdf('type'),
             Solid.vocab.solid('Connection')
           )
-          console.log(connections)
           connections.forEach(function (person) {
             var profile = {}
             profile.webid = person.subject.uri
@@ -213,8 +219,18 @@ var Conn = (function () {
         $rdf.sym(profile.picture)
       )
     }
-    var data = new $rdf.Serializer(g).toN3(g)
-    console.log(data)
+    var toAdd = []
+    var toDel = null
+    g.statementsMatching(webid, undefined, undefined).forEach(function (st) {
+      toAdd.push(st.toNT())
+    })
+    var defaultIndex = User.privIndexes[0].locationUri
+    console.log(defaultIndex, toAdd)
+    Solid.web.patch(defaultIndex, toDel, toAdd)
+      .then(function () {
+        // Update the profile object with the new registry without reloading
+        addFeedback('success', 'You have a new connection!')
+      })
   }
 
   // Add a connected user to the list and sort the list
@@ -252,7 +268,6 @@ var Conn = (function () {
     // clear the info profile
     profileInfo.innerHTML = ''
     if (isNew) {
-      addFeedback('success', 'You have a new connection!')
       addConnection(profile)
     }
     uList.sort(sort, { order: order })
@@ -939,6 +954,7 @@ var Conn = (function () {
 
   // public methods
   return {
+    user: User,
     addFeedback: addFeedback,
     registerApp: registerApp
   }
