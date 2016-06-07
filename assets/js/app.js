@@ -3,6 +3,7 @@ var Conn = (function () {
 
   // constants
   const appContainer = 'connections'
+  const appUrl = document.location.hostname + document.location.pathname
 
   // init static elements
   var welcome = document.getElementById('welcome')
@@ -26,6 +27,8 @@ var Conn = (function () {
 
   var Solid = require('solid')
 
+  var User = {}
+
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card pointer center">' +
     '<div class="webid tooltip" data-tooltip="View details">' +
@@ -42,34 +45,7 @@ var Conn = (function () {
   '</div>'
 
   var searchFields = ['name']
-
-  var items = [
-    // {
-    //   name: 'John Doe',
-    //   emails: ['john@doe.com'],
-    //   picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-1.png',
-    //   webid: 'https://john.com/profile#me'
-    // },
-    // {
-    //   name: 'Jane Doe',
-    //   emails: ['jane@doe.com'],
-    //   picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-3.png',
-    //   webid: 'https://jane.org/card#me'
-    // },
-    // {
-    //   name: 'Adam Crow',
-    //   emails: ['james@crow.com'],
-    //   picture: 'https://picturepan2.github.io/spectre/demo/img/avatar-2.png',
-    //   status: 'connected',
-    //   webid: 'https://adam.org/card#me'
-    // },
-    // {
-    //   name: 'Mike Smith',
-    //   emails: ['m@smith.net'],
-    //   initials: 'M S',
-    //   picture: 'assets/images/empty.png'
-    // }
-  ]
+  var items = []
 
   // ------------ END LIST CONF ------------
 
@@ -90,16 +66,16 @@ var Conn = (function () {
           // Load registry and find location for data
           // TODO add ConnectionsIndex to the solid terms vocab
           profile.loadTypeRegistry().then(function (profile) {
-            var regs = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
-            if (regs.length === 0) {
+            var pub = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
+            var priv = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+            var indexes = pub.concat(priv)
+            if (indexes.length === 0) {
               // register
               registerType(profile)
             } else {
-              var uris = []
-              regs.forEach(function (loc) {
-                uris.push(loc.locationUri)
-              })
-              loadConnections(uris)
+              User.webid = profile.webId
+              User.indexes = indexes
+              loadConnections()
             }
           })
         }
@@ -114,50 +90,60 @@ var Conn = (function () {
     if (profile.storage.length > 0) {
       Solid.web.createContainer(profile.storage, appContainer, {})
         .then(function (meta) {
-          var classToRegister = Solid.vocab.solid('PublicConnections')
+          var classToRegister = Solid.vocab.solid('PrivateConnections')
           // TODO add UI for storage selection
           var locationToRegister = Solid.util.absoluteUrl(profile.storage[0], meta.url)
-          locationToRegister += '/pubIndex.ttl'
-          var isListed = true
+          locationToRegister += '/privIndex.ttl'
+          var isListed = false
           profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
             .then(function (profile) {
-              var regs = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
-              var uris = []
-              regs.forEach(function (loc) {
-                uris.push(loc.locationUri)
-              })
-              loadConnections(uris)
+              var privIndex = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
+              classToRegister = Solid.vocab.solid('PublicConnections')
+              // TODO add UI for storage selection
+              locationToRegister = Solid.util.absoluteUrl(profile.storage[0], meta.url)
+              locationToRegister += '/pubIndex.ttl'
+              isListed = true
+              profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
+                .then(function (profile) {
+                  var pubIndex = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+                  User.webid = profile.webId
+                  User.indexes = privIndex.concat(pubIndex)
+                  loadConnections()
+                })
+                .catch(function (err) {
+                  console.log('Could not create public data registry:', err)
+                  addFeedback('error', 'Could not create public data registry')
+                })
             })
             .catch(function (err) {
-              console.log(profile)
-              console.log('Could not register data type', err)
-              addFeedback('error', 'Could not register data type')
+              console.log('Could not create private data registry:', err)
+              addFeedback('error', 'Could not create private data registry')
             })
         })
         .catch(function (err) {
-          console.log('Could not create app folder', err)
-          addFeedback('error', 'Could not create app folder')
+          console.log('Could not create data folder for app:', err)
+          addFeedback('error', 'Could not create data folder for app')
         })
     }
   }
 
   // -------------- END TYPE REGISTRY --------------
 
-  var loadConnections = function (locations) {
-    if (!locations) {
+  var loadConnections = function () {
+    if (!User.indexes || User.indexes.length === 0) {
       console.log('No data source provided for loading connections')
+      return
     }
-    locations.forEach(function (uri) {
-      console.log('Loading connections from', uri)
-      Solid.web.get(uri)
+    User.indexes.forEach(function (index) {
+      Solid.web.get(index.locationUri)
         .then(function (response) {
           var g = response.parsedGraph()
           var connections = g.statementsMatching(
             undefined,
             Solid.vocab.rdf('type'),
-            Solid.vocab.foaf('Person')
+            Solid.vocab.solid('Connection')
           )
-          console.log('Connections:', connections)
+          console.log(connections)
           connections.forEach(function (person) {
             var profile = {}
             profile.webid = person.subject.uri
@@ -169,7 +155,7 @@ var Conn = (function () {
             if (picture) {
               profile.picture = picture.uri
             }
-            addConnection(profile)
+            addToList(profile)
           })
         })
     })
@@ -204,18 +190,45 @@ var Conn = (function () {
     uList.search()
   }
 
+  var addConnection = function (profile, isPublic) {
+    // var indexType = (isPublic) ?
+    var g = $rdf.graph()
+    var webid = $rdf.sym(profile.webid)
+    g.add(
+      webid,
+      Solid.vocab.rdf('type'),
+      Solid.vocab.solid('Connection')
+    )
+    if (profile.name) {
+      g.add(
+        webid,
+        Solid.vocab.foaf('name'),
+        $rdf.lit(profile.name)
+      )
+    }
+    if (profile.picture) {
+      g.add(
+        webid,
+        Solid.vocab.foaf('img'),
+        $rdf.sym(profile.picture)
+      )
+    }
+    var data = new $rdf.Serializer(g).toN3(g)
+    console.log(data)
+  }
+
   // Add a connected user to the list and sort the list
   // @param profile {object} Contains fields contained in the index document
   // @param sort {string} Value to use for sorting (name, email, etc.)
   // @param order {string} Value to use for ordering (asc / desc)
-  // @param verbose {bool} If true, show feedback to the user
-  var addConnection = function (profile, sort, order, verbose) {
+  // @param isNew {bool} If true, show feedback to the user and add connection
+  var addToList = function (profile, sort, order, isNew) {
     sort = sort || 'name'
     order = order || 'asc'
 
     showElement(lookupElement)
     showElement(infoButtons)
-    if (uList.get('webid', profile.webid).length > 0 && verbose) {
+    if (uList.get('webid', profile.webid).length > 0 && isNew) {
       addFeedback('', 'You are already connected with this person')
       return
     }
@@ -238,13 +251,14 @@ var Conn = (function () {
     showElement(actionsElement)
     // clear the info profile
     profileInfo.innerHTML = ''
-    if (verbose) {
+    if (isNew) {
       addFeedback('success', 'You have a new connection!')
+      addConnection(profile)
     }
     uList.sort(sort, { order: order })
   }
 
-  var deleteConnection = function (webid) {
+  var deleteFromList = function (webid) {
     uList.remove('webid', webid)
     if (uList.visibleItems.length === 0) {
       hideElement(searchElement)
@@ -549,7 +563,7 @@ var Conn = (function () {
     // button.classList.add('btn', 'btn-lg', 'btn-primary')
     // button.innerHTML = 'Create contact'
     // button.addEventListener('click', function () {
-    //   addConnection(profile)
+    //   addToList(profile)
     //   deleteElement(card)
     //   closeModal()
     // }, false)
@@ -629,7 +643,7 @@ var Conn = (function () {
     button.classList.add('btn', 'btn-primary')
     button.innerHTML = 'Connect'
     button.addEventListener('click', function () {
-      addConnection(profile)
+      addToList(profile, null, null, true)
       deleteElement(card)
       closeModal()
     }, false)
@@ -803,8 +817,28 @@ var Conn = (function () {
         moverlay.parentNode.removeChild(moverlay)
       }, 1500)
 
-      deleteConnection(profile.webid)
+      deleteFromList(profile.webid)
     }, false)
+  }
+
+  // ------------ Local Storage ------------
+  var saveLocalUser = function (data) {
+    try {
+      window.localStorage.setItem(appUrl + 'userInfo', JSON.stringify(data))
+    } catch (err) {
+      console.log(err)
+    }
+  }
+  // load localstorage config data
+  var loadLocalUser = function () {
+    try {
+      var data = JSON.parse(window.localStorage.getItem(appUrl + 'userInfo'))
+      if (data) {
+        return data
+      }
+    } catch (err) {
+      console.log(err)
+    }
   }
 
   // ------------ UTILITY ------------
@@ -896,6 +930,12 @@ var Conn = (function () {
 
   // register App
   registerApp('https://deiu.me/profile#me')
+
+  // var localUser = loadLocalUser()
+  // if (localUser) {
+  //   loadConnections(localUser.locations)
+  // } else {
+  // }
 
   // public methods
   return {

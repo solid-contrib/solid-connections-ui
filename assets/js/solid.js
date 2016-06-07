@@ -1603,7 +1603,7 @@ function typeRegistryForClass (profile, rdfClass) {
  */
 function registrationsFromGraph (graph, rdfClass, isListed) {
   var entrySubject
-  var location
+  var locations = []
   var registrations = []
   if (!graph) {
     return registrations
@@ -1614,16 +1614,22 @@ function registrationsFromGraph (graph, rdfClass, isListed) {
     entrySubject = match.subject
     // Have the hash fragment of the registration, now need to determine
     // location type, and the actual location.
-    location = graph.any(entrySubject, vocab.solid('instance'))
-    if (location) {
-      registrations.push(new IndexRegistration(entrySubject.uri, rdfClass,
-        'instance', location.uri, isListed))
+    locations = graph.statementsMatching(entrySubject,
+                                        vocab.solid('instance'), undefined)
+    if (locations.length > 0) {
+      locations.forEach(function (location) {
+        registrations.push(new IndexRegistration(entrySubject.uri, rdfClass,
+          'instance', location.object.uri, isListed))
+      })
     }
     // Now try to find solid:instanceContainer matches
-    location = graph.any(entrySubject, vocab.solid('instanceContainer'))
-    if (location) {
-      registrations.push(new IndexRegistration(entrySubject.uri, rdfClass,
-        'container', location.uri, isListed))
+    locations = graph.statementsMatching(entrySubject,
+                                    vocab.solid('instanceContainer'), undefined)
+    if (locations.length > 0) {
+      locations.forEach(function (location) {
+        registrations.push(new IndexRegistration(entrySubject.uri, rdfClass,
+          'container', location.object.uri, isListed))
+      })
     }
   })
   return registrations
