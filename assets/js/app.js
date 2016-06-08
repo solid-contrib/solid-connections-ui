@@ -10,7 +10,9 @@ var Conn = (function () {
   var signin = document.getElementById('signin')
   var signinBtn = document.getElementById('signin-btn')
   var signupBtn = document.getElementById('signup-btn')
+  var status = document.getElementById('status')
   var welcome = document.getElementById('welcome')
+  var start = document.getElementById('start')
   var search = document.getElementById('search')
   var searchElement = document.getElementById('search-area')
   var clearSearch = document.getElementById('clear-search')
@@ -77,6 +79,7 @@ var Conn = (function () {
   // Discovers where connections data is stored using the type registry
   // (also triggers a registration if no locations are found)
   var registerApp = function (webid) {
+    status.innerHTML = newStatus('Loading your profile...')
     return Solid.identity.getProfile(webid)
       .then(function (profile) {
         var localUser = importSolidProfile(profile)
@@ -87,6 +90,7 @@ var Conn = (function () {
         if (!profile.typeIndexListed.uri) {
           console.log('No registry found')
           // Create typeIndex
+          status.innerHTML = newStatus('Initializing app...')
           profile.initTypeRegistry().then(function (profile) {
             registerType(profile)
           })
@@ -94,6 +98,7 @@ var Conn = (function () {
           console.log('Found registry', profile.typeIndexListed.uri)
           // Load registry and find location for data
           // TODO add ConnectionsIndex to the solid terms vocab
+          status.innerHTML = newStatus('Loading app data...')
           profile.loadTypeRegistry()
             .then(function (profile) {
               var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
@@ -207,11 +212,15 @@ var Conn = (function () {
   // -------------- ADD/REMOVE CONNECTIONS --------------
   var loadConnections = function () {
     if (!User.pubIndexes && !User.privIndexes) {
+      hideElement(signin)
       console.log('No data source provided for loading connections')
       return
     }
-    var indexes = User.privIndexes.concat(User.pubIndexes)
-    indexes.forEach(function (index) {
+
+    hideElement(signin)
+
+    var indexes = User.privIndexes.concat(User.pubIndexes).map(function (index) {
+      // done loading
       Solid.web.get(index.locationUri)
         .then(function (response) {
           var g = response.parsedGraph()
@@ -240,6 +249,12 @@ var Conn = (function () {
         .catch(function () {
           // TODO handle errors in case of missing index files or no access
         })
+    })
+    Promise.all(indexes).then(function () {
+      if (Object.keys(Connections).length === 0) {
+        showElement(start)
+        hideElement(status)
+      }
     })
   }
 
@@ -511,10 +526,7 @@ var Conn = (function () {
     user.classList.add('slide-in')
     hideElement(actionsElement)
 
-    extendedInfo.innerHTML = '<div class="text-center">' +
-      ' <h4>Loading profile...</h4>' +
-      ' <div class="loading"></div>' +
-      '</div>'
+    extendedInfo.innerHTML = newStatus('Loading profile data...')
 
     Solid.identity.getProfile(webid)
       .then(function (resp) {
@@ -988,6 +1000,13 @@ var Conn = (function () {
     elem.classList.remove('loading')
   }
 
+  var newStatus = function (msg) {
+    return '<div class="text-center">' +
+    ' <h4>' + msg + '</h4>' +
+    ' <div class="loading"></div>' +
+    '</div>'
+  }
+
   // ------------ EVENT LISTENERS ------------
 
   // sign in/up button
@@ -1065,14 +1084,12 @@ var Conn = (function () {
 
   var signUserIn = function () {
     Solid.login().then(function (webid) {
-      hideElement(signin)
       initApp(webid)
     })
   }
 
   var signUserUp = function () {
     Solid.signup().then(function (webid) {
-      hideElement(signin)
       initApp(webid)
     })
   }

@@ -73,44 +73,48 @@
     </section>
 
     <section id="user" class="user slider abs">
-      <div class="row">
-        <div class="column col-sm-6 centered flex center">
-          <div class="flex">
-            <div class="cancel-view pointer box p-10 tooltip tooltip-right" data-tooltip="Go back">
-              <img src="assets/icons/back.svg" class="icon" />
-            </div>
+      <div class="column col-sm-6 centered flex center">
+        <div class="flex">
+          <div class="cancel-view pointer box p-10 tooltip tooltip-right" data-tooltip="Go back">
+            <img src="assets/icons/back.svg" class="icon" />
           </div>
-          <div  id="remove" class="flex flex-right center"></div>
         </div>
+        <div  id="remove" class="flex flex-right center"></div>
       </div>
-      <div class="row">
-        <div class="column col-sm-6 centered">
-          <div id="extended-info" class="content"></div>
-        </div>
+      <div class="column col-sm-6 centered">
+        <div id="extended-info" class="content"></div>
       </div>
     </section>
 
     <section id="welcome" class="welcome hidden">
-      <h3 class="text-center no-h3-top">Let's get you started!</h3>
-      <br />
-      <p class="text-center">
-        It looks like you don't have any connections yet.
-      </p>
-      <p class="text-center">
-        Click the button below to add your first connection.
-      </p>
-      <br />
-      <div class="btn-group btn-group-block centered">
-        <button class="btn btn-lg show-new"><i class="fa fa-user-plus" aria-hidden="true"></i> New connection</button>
+      <!-- <h3 class="text-center no-h3-top">Let's get you started!</h3> -->
+      <!-- <br /> -->
+      <h4 id="status"></h4>
+      <div id="start" class="hidden">
+        <p class="text-center">
+          It looks like you don't have any connections yet.
+        </p>
+        <p class="text-center">
+          Click the button below to add your first connection.
+        </p>
+        <br />
+        <div class="btn-group btn-group-block centered">
+          <button class="btn btn-lg show-new"><i class="fa fa-user-plus" aria-hidden="true"></i> New connection</button>
+        </div>
       </div>
     </section>
 
-    <section id="signin" class="center-page">
-      <div>
+    <section id="signin" class="center-page text-center">
+      <!-- <div>
         <img src="assets/images/solid_logo_color.svg" class="img-responsive" />
+      </div> -->
+      <div>
+        <h4>Let's get you connected!</h4>
+        <div id="status-buttons">
+          <button id="signin-btn" class="btn btn-lg mr-10">Sign In</button>
+          <button id="signup-btn" class="btn btn-lg">Sign Up</button>
+        </div>
       </div>
-      <button id="signin-btn" class="btn btn-lg mr-10">Sign In</button>
-      <button id="signup-btn" class="btn btn-lg">Sign Up</button>
     </section>
   </div>
 
