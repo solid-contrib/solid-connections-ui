@@ -7,6 +7,9 @@ var Conn = (function () {
                 document.location.pathname
 
   // init static elements
+  var signin = document.getElementById('signin')
+  var signinBtn = document.getElementById('signin-btn')
+  var signupBtn = document.getElementById('signup-btn')
   var welcome = document.getElementById('welcome')
   var search = document.getElementById('search')
   var searchElement = document.getElementById('search-area')
@@ -976,6 +979,15 @@ var Conn = (function () {
 
   // ------------ EVENT LISTENERS ------------
 
+  // sign in/up button
+  signinBtn.addEventListener('click', function () {
+    signUserIn()
+  }, false)
+
+  signupBtn.addEventListener('click', function () {
+    signUserUp()
+  }, false)
+
   // search event listener
   search.addEventListener('keyup', function () {
     searchList()
@@ -1026,16 +1038,33 @@ var Conn = (function () {
   }
 
   var uList = new window.List('connections', listOptions, items)
-  if (uList.visibleItems.length === 0) {
-    showElement(welcome)
-  } else {
-    showElement(searchElement)
-    showElement(actionsElement)
-    uList.sort('name', { order: 'asc' })
+
+  // INIT APP
+  var initApp = function (webid) {
+    // register App
+    registerApp(webid)
+    if (uList.visibleItems.length === 0) {
+      showElement(welcome)
+    } else {
+      showElement(searchElement)
+      showElement(actionsElement)
+      uList.sort('name', { order: 'asc' })
+    }
   }
 
-  // register App
-  registerApp('https://deiu.me/profile#me')
+  var signUserIn = function () {
+    Solid.login().then(function (webid) {
+      hideElement(signin)
+      initApp(webid)
+    })
+  }
+
+  var signUserUp = function () {
+    Solid.signup().then(function (webid) {
+      hideElement(signin)
+      initApp(webid)
+    })
+  }
 
   // var localUser = loadLocalUser()
   // if (localUser) {
