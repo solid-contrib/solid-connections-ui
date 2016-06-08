@@ -221,7 +221,7 @@ var Conn = (function () {
 
     var indexes = User.privIndexes.concat(User.pubIndexes).map(function (index) {
       // done loading
-      Solid.web.get(index.locationUri)
+      return Solid.web.get(index.locationUri)
         .then(function (response) {
           var g = response.parsedGraph()
           var connections = g.statementsMatching(
@@ -245,16 +245,22 @@ var Conn = (function () {
             }
             addToList(profile)
           })
+          return connections.length
         })
         .catch(function () {
           // TODO handle errors in case of missing index files or no access
+          return 0
         })
     })
-    Promise.all(indexes).then(function () {
-      if (Object.keys(Connections).length === 0) {
+    Promise.all(indexes).then(function (contacts) {
+      var total = 0
+      contacts.forEach(function (t) {
+        total += t
+      })
+      if (total === 0) {
         showElement(start)
-        hideElement(status)
       }
+      hideElement(status)
     })
   }
 
