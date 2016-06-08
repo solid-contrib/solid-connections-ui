@@ -3,7 +3,8 @@ var Conn = (function () {
 
   // constants
   const appContainer = 'connections'
-  const appUrl = document.location.hostname + document.location.pathname
+  const appUrl = document.location.protocol + '//' + document.location.host +
+                document.location.pathname
 
   // init static elements
   var welcome = document.getElementById('welcome')
@@ -32,6 +33,23 @@ var Conn = (function () {
   // Map of connections
   var Connections = {}
 
+  // ------------ URL QUERY VALUES ------------
+  // Map URL query items to their values
+  // e.g. ?referrer=https... -> queryVals[referrer] returns 'https...'
+  var queryVals = (function (a) {
+    if (a === '') return {}
+    var b = {}
+    for (var i = 0; i < a.length; ++i) {
+      var p = a[i].split('=', 2)
+      if (p.length === 1) {
+        b[p[0]] = ''
+      } else {
+        b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, ' '))
+      }
+    }
+    return b
+  })(window.location.search.substr(1).split('&'))
+
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card pointer center">' +
     '<div class="webid tooltip" data-tooltip="View details">' +
@@ -53,14 +71,19 @@ var Conn = (function () {
   // ------------ END LIST CONF ------------
 
   // ------------ TYPE REGISTRY ------------
+  // Discovers where connections data is stored using the type registry
+  // (also triggers a registration if no locations are found)
   var registerApp = function (webid) {
     return Solid.identity.getProfile(webid)
       .then(function (profile) {
+        var localUser = importSolidProfile(profile)
+        User.webid = profile.webId
+        User.name = localUser.name
+        User.inbox = localUser.inbox
         // We need to register
         if (!profile.typeIndexListed.uri) {
           console.log('No registry found')
           // Create typeIndex
-          // console.log(profile)
           profile.initTypeRegistry().then(function (profile) {
             registerType(profile)
           })
@@ -76,7 +99,6 @@ var Conn = (function () {
                 // register
                 registerType(profile)
               } else {
-                User.webid = profile.webId
                 User.pubIndexes = pubIndexes
                 User.privIndexes = privIndexes
                 loadConnections()
@@ -93,6 +115,8 @@ var Conn = (function () {
       })
   }
 
+  // Register the app data location with the type registry
+  // TODO this belongs in Solid.js
   var registerType = function (profile) {
     if (profile.storage.length > 0) {
       Solid.web.createContainer(profile.storage, appContainer, {})
@@ -200,50 +224,10 @@ var Conn = (function () {
             addToList(profile)
           })
         })
+        .catch(function () {
+          // TODO handle errors in case of missing index files or no access
+        })
     })
-  }
-
-  // Add a connected user to the list and sort the list
-  // @param profile {object} Contains fields contained in the index document
-  // @param sort {string} Value to use for sorting (name, email, etc.)
-  // @param order {string} Value to use for ordering (asc / desc)
-  // @param verbose {bool} If true, show feedback to the user
-  var addToList = function (profile, sort, order, verbose) {
-    sort = sort || 'name'
-    order = order || 'asc'
-
-    showElement(lookupElement)
-    showElement(infoButtons)
-    if (uList.get('webid', profile.webid).length > 0 && verbose) {
-      addFeedback('', 'You are already connected with this person')
-      return
-    }
-    var item = {}
-    item.webid = item.url = profile.webid
-    item.name = profile.name
-    if (profile.picture) {
-      item.picture = profile.picture
-    } else {
-      item.picture = 'assets/images/empty.png'
-      item.initials = getInitials(profile.name)
-    }
-    if (profile.email) {
-      item.picture = profile.picture
-    }
-    item.status = profile.status || 'invitation sent'
-    // Add to list of connections
-    Connections[profile.webid] = profile
-    // Add to UI
-    uList.add(item)
-    hideElement(welcome)
-    showElement(searchElement)
-    showElement(actionsElement)
-    // clear the info profile
-    profileInfo.innerHTML = ''
-    if (verbose) {
-      addFeedback('success', 'You have a new connection!')
-    }
-    uList.sort(sort, { order: order })
   }
 
   // Add a new connection to the index document
@@ -284,7 +268,56 @@ var Conn = (function () {
       .then(function () {
         // Update the profile object with the new registry without reloading
         addToList(profile, 'name', 'asc', true)
+        // send a notification to the user's inbox
+        var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
+        var title = 'New connection'
+        var content = User.name + ' has just connected with you!' +
+                      ' Click here to connect with this person -- ' + link
+        sendNotification(profile.inbox, title, content)
       })
+  }
+
+  // Add the new connection to the list and sort the list
+  // @param profile {object} Contains fields contained in the index document
+  // @param sort {string} Value to use for sorting (name, email, etc.)
+  // @param order {string} Value to use for ordering (asc / desc)
+  // @param verbose {bool} If true, show feedback to the user
+  var addToList = function (profile, sort, order, verbose) {
+    sort = sort || 'name'
+    order = order || 'asc'
+
+    showElement(lookupElement)
+    showElement(infoButtons)
+    if (uList.get('webid', profile.webid).length > 0 && verbose) {
+      addFeedback('', 'You are already connected with this person')
+      return
+    }
+    var item = {}
+    item.webid = item.url = profile.webid
+    item.name = profile.name
+    if (profile.picture) {
+      item.picture = profile.picture
+    } else {
+      item.picture = 'assets/images/empty.png'
+      item.initials = getInitials(profile.name)
+    }
+    if (profile.email) {
+      item.picture = profile.picture
+    }
+    item.status = profile.status || 'invitation sent'
+    // Add to list of connections
+    Connections[profile.webid] = profile
+    // Add to UI
+    uList.add(item)
+    hideElement(welcome)
+    showElement(searchElement)
+    showElement(actionsElement)
+    // clear the info profile
+    profileInfo.innerHTML = ''
+    if (verbose) {
+      addFeedback('success', 'You have a new connection!')
+    }
+    uList.sort(sort, { order: order })
   }
 
   // Remove a connection
@@ -365,18 +398,18 @@ var Conn = (function () {
   }
 
   var importSolidProfile = function (data) {
-    var profile = {}
-
     if (!data.parsedGraph) {
       return null
     }
 
     var g = data.parsedGraph
-    var webid = data.webId
-    // set webid
-    profile.webid = webid
 
-    var webidRes = $rdf.sym(webid)
+    var profile = {}
+
+    // set webid
+    profile.webid = data.webId
+
+    var webidRes = $rdf.sym(data.webId)
 
     // set name
     var name = g.any(webidRes, Solid.vocab.foaf('name'))
@@ -793,6 +826,29 @@ var Conn = (function () {
     }
   }
 
+  // ------------ NOTIFICATIONS ------------
+  var sendNotification = function (inbox, title, content) {
+    var g = $rdf.graph()
+    var date = new Date().toISOString()
+    g.add($rdf.sym(''), Solid.vocab.rdf('type'), Solid.vocab.solid('Notification'))
+    g.add($rdf.sym(''), Solid.vocab.dct('title'), $rdf.lit(title))
+    g.add($rdf.sym(''), Solid.vocab.dct('created'), $rdf.lit(date, '', $rdf.NamedNode.prototype.XSDdateTime))
+    g.add($rdf.sym(''), Solid.vocab.sioc('content'), $rdf.lit(content))
+    g.add($rdf.sym(''), Solid.vocab.sioc('has_creator'), $rdf.sym('#author'))
+
+    g.add($rdf.sym('#author'), Solid.vocab.rdf('type'), Solid.vocab.sioc('UserAccount'))
+    g.add($rdf.sym('#author'), Solid.vocab.sioc('account_of'), $rdf.sym(User.webid))
+    if (User.name) {
+      g.add($rdf.sym('#author'), Solid.vocab.foaf('name'), $rdf.lit(User.name))
+    }
+    if (User.picture) {
+      g.add($rdf.sym('#author'), Solid.vocab.sioc('avatar'), $rdf.sym(User.picture))
+    }
+
+    var data = new $rdf.Serializer(g).toN3(g)
+    Solid.web.post(inbox, data)
+  }
+
   // ------------ MODAL ------------
   var closeModal = function () {
     hideElement(newModal)
@@ -871,25 +927,25 @@ var Conn = (function () {
     }, false)
   }
 
-  // ------------ Local Storage ------------
-  var saveLocalUser = function (data) {
-    try {
-      window.localStorage.setItem(appUrl + 'userInfo', JSON.stringify(data))
-    } catch (err) {
-      console.log(err)
-    }
-  }
-  // load localstorage config data
-  var loadLocalUser = function () {
-    try {
-      var data = JSON.parse(window.localStorage.getItem(appUrl + 'userInfo'))
-      if (data) {
-        return data
-      }
-    } catch (err) {
-      console.log(err)
-    }
-  }
+  // // ------------ Local Storage ------------
+  // var saveLocalUser = function (data) {
+  //   try {
+  //     window.localStorage.setItem(appUrl + 'userInfo', JSON.stringify(data))
+  //   } catch (err) {
+  //     console.log(err)
+  //   }
+  // }
+  // // load localstorage config data
+  // var loadLocalUser = function () {
+  //   try {
+  //     var data = JSON.parse(window.localStorage.getItem(appUrl + 'userInfo'))
+  //     if (data) {
+  //       return data
+  //     }
+  //   } catch (err) {
+  //     console.log(err)
+  //   }
+  // }
 
   // ------------ UTILITY ------------
   var hideElement = function (elem) {
