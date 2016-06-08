@@ -27,7 +27,10 @@ var Conn = (function () {
 
   var Solid = require('solid')
 
+  // User object
   var User = {}
+  // Map of connections
+  var Connections = {}
 
   // ------------ LIST CONF ------------
   var connectionTemplate = '<div class="user-card pointer center">' +
@@ -134,39 +137,7 @@ var Conn = (function () {
 
   // -------------- END TYPE REGISTRY --------------
 
-  var loadConnections = function () {
-    if (!User.pubIndexes && !User.privIndexes) {
-      console.log('No data source provided for loading connections')
-      return
-    }
-    var indexes = User.privIndexes.concat(User.pubIndexes)
-    console.log(indexes)
-    indexes.forEach(function (index) {
-      Solid.web.get(index.locationUri)
-        .then(function (response) {
-          var g = response.parsedGraph()
-          var connections = g.statementsMatching(
-            undefined,
-            Solid.vocab.rdf('type'),
-            Solid.vocab.solid('Connection')
-          )
-          connections.forEach(function (person) {
-            var profile = {}
-            profile.webid = person.subject.uri
-            var name = g.any(person.subject, Solid.vocab.foaf('name'))
-            if (name) {
-              profile.name = name.value
-            }
-            var picture = g.any(person.subject, Solid.vocab.foaf('img'))
-            if (picture) {
-              profile.picture = picture.uri
-            }
-            addToList(profile)
-          })
-        })
-    })
-  }
-
+  // -------------- SEARCH LIST --------------
   // Search the connections list for a given value
   // @param fields {array}
   var searchList = function (fields) {
@@ -196,6 +167,88 @@ var Conn = (function () {
     uList.search()
   }
 
+  // -------------- ADD/REMOVE CONNECTIONS --------------
+  var loadConnections = function () {
+    if (!User.pubIndexes && !User.privIndexes) {
+      console.log('No data source provided for loading connections')
+      return
+    }
+    var indexes = User.privIndexes.concat(User.pubIndexes)
+    indexes.forEach(function (index) {
+      Solid.web.get(index.locationUri)
+        .then(function (response) {
+          var g = response.parsedGraph()
+          var connections = g.statementsMatching(
+            undefined,
+            Solid.vocab.rdf('type'),
+            Solid.vocab.solid('Connection')
+          )
+          connections.forEach(function (person) {
+            var profile = {}
+            profile.webid = person.subject.uri
+            profile.public = index.isListed
+            profile.locationUri = index.locationUri
+            profile.graph = g.statementsMatching(person.subject, undefined, undefined)
+            var name = g.any(person.subject, Solid.vocab.foaf('name'))
+            if (name) {
+              profile.name = name.value
+            }
+            var picture = g.any(person.subject, Solid.vocab.foaf('img'))
+            if (picture) {
+              profile.picture = picture.uri
+            }
+            addToList(profile)
+          })
+        })
+    })
+  }
+
+  // Add a connected user to the list and sort the list
+  // @param profile {object} Contains fields contained in the index document
+  // @param sort {string} Value to use for sorting (name, email, etc.)
+  // @param order {string} Value to use for ordering (asc / desc)
+  // @param verbose {bool} If true, show feedback to the user
+  var addToList = function (profile, sort, order, verbose) {
+    sort = sort || 'name'
+    order = order || 'asc'
+
+    showElement(lookupElement)
+    showElement(infoButtons)
+    if (uList.get('webid', profile.webid).length > 0 && verbose) {
+      addFeedback('', 'You are already connected with this person')
+      return
+    }
+    var item = {}
+    item.webid = item.url = profile.webid
+    item.name = profile.name
+    if (profile.picture) {
+      item.picture = profile.picture
+    } else {
+      item.picture = 'assets/images/empty.png'
+      item.initials = getInitials(profile.name)
+    }
+    if (profile.email) {
+      item.picture = profile.picture
+    }
+    item.status = profile.status || 'invitation sent'
+    // Add to list of connections
+    Connections[profile.webid] = profile
+    // Add to UI
+    uList.add(item)
+    hideElement(welcome)
+    showElement(searchElement)
+    showElement(actionsElement)
+    // clear the info profile
+    profileInfo.innerHTML = ''
+    if (verbose) {
+      addFeedback('success', 'You have a new connection!')
+    }
+    uList.sort(sort, { order: order })
+  }
+
+  // Add a new connection to the index document
+  // @param profile {object} Contains fields contained in the index document
+  // @param isPublic {bool} If true, add the connection to the public index instead
   var addConnection = function (profile, isPublic) {
     // var indexType = (isPublic) ?
     var g = $rdf.graph()
@@ -221,66 +274,62 @@ var Conn = (function () {
     }
     var toAdd = []
     var toDel = null
-    g.statementsMatching(webid, undefined, undefined).forEach(function (st) {
+    profile.graph = g.statementsMatching(webid, undefined, undefined)
+    profile.graph.forEach(function (st) {
       toAdd.push(st.toNT())
     })
-    var defaultIndex = User.privIndexes[0].locationUri
-    console.log(defaultIndex, toAdd)
+    var defaultIndex = (isPublic) ? User.pubIndexes[0].locationUri : User.privIndexes[0].locationUri
+    profile.locationUri = defaultIndex
     Solid.web.patch(defaultIndex, toDel, toAdd)
       .then(function () {
         // Update the profile object with the new registry without reloading
-        addFeedback('success', 'You have a new connection!')
+        addToList(profile, 'name', 'asc', true)
       })
   }
 
-  // Add a connected user to the list and sort the list
-  // @param profile {object} Contains fields contained in the index document
-  // @param sort {string} Value to use for sorting (name, email, etc.)
-  // @param order {string} Value to use for ordering (asc / desc)
-  // @param isNew {bool} If true, show feedback to the user and add connection
-  var addToList = function (profile, sort, order, isNew) {
-    sort = sort || 'name'
-    order = order || 'asc'
+  // Remove a connection
+  var removeConnection = function (webid) {
+    var toAdd = null
+    var toDel = []
 
-    showElement(lookupElement)
-    showElement(infoButtons)
-    if (uList.get('webid', profile.webid).length > 0 && isNew) {
-      addFeedback('', 'You are already connected with this person')
-      return
-    }
-    var item = {}
-    item.webid = item.url = profile.webid
-    item.name = profile.name
-    if (profile.picture) {
-      item.picture = profile.picture
-    } else {
-      item.picture = 'assets/images/empty.png'
-      item.initials = getInitials(profile.name)
-    }
-    if (profile.email) {
-      item.picture = profile.picture
-    }
-    item.status = profile.status || 'invitation sent'
-    uList.add(item)
-    hideElement(welcome)
-    showElement(searchElement)
-    showElement(actionsElement)
-    // clear the info profile
-    profileInfo.innerHTML = ''
-    if (isNew) {
-      addConnection(profile)
-    }
-    uList.sort(sort, { order: order })
-  }
+    var profile = Connections[webid]
+    profile.graph.forEach(function (st) {
+      toDel.push(st.toNT())
+    })
+    Solid.web.patch(profile.locationUri, toDel, toAdd).then(function () {
+      var moverlay = document.getElementById('delete-dialog')
+      if (moverlay) {
+        moverlay.getElementsByClassName('modal-header')[0].innerHTML = ''
+        moverlay.getElementsByClassName('modal-footer')[0].innerHTML = ''
+        moverlay.getElementsByClassName('modal-body')[0].innerHTML = `<div class="icon-success svg text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="72px" height="72px">
+            <g fill="none" stroke="#43C47A" stroke-width="2">
+              <circle cx="36" cy="36" r="35" style="stroke-dasharray:240px, 240px; stroke-dashoffset: 480px;"></circle>
+              <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
+            </g>
+          </svg>
+          <h6 class="green">Success!</h6>
+        </div>`
+        window.setTimeout(function () {
+          moverlay.parentNode.removeChild(moverlay)
+        }, 1500)
+      }
 
-  var deleteFromList = function (webid) {
-    uList.remove('webid', webid)
-    if (uList.visibleItems.length === 0) {
-      hideElement(searchElement)
-      hideElement(actionsElement)
-      showElement(welcome)
-    }
-    cancelView()
+      // Remove the connection from the local list
+      delete Connections[webid]
+      // Remove the UI element
+      uList.remove('webid', webid)
+      if (uList.visibleItems.length === 0) {
+        hideElement(searchElement)
+        hideElement(actionsElement)
+        showElement(welcome)
+      }
+      cancelView()
+    })
+    .catch(function (err) {
+      console.log(err)
+      addFeedback('error', 'Could not remove connection from server')
+    })
   }
 
   // Fetch a WebID profile using Solid.js
@@ -444,6 +493,7 @@ var Conn = (function () {
   var cancelView = function () {
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
+    showElement(actionsElement)
   }
 
   var extendedLook = function (profile, parent) {
@@ -658,7 +708,7 @@ var Conn = (function () {
     button.classList.add('btn', 'btn-primary')
     button.innerHTML = 'Connect'
     button.addEventListener('click', function () {
-      addToList(profile, null, null, true)
+      addConnection(profile)
       deleteElement(card)
       closeModal()
     }, false)
@@ -765,6 +815,7 @@ var Conn = (function () {
     var body = document.getElementsByTagName('body')[0]
     var moverlay = document.createElement('div')
     body.appendChild(moverlay)
+    moverlay.setAttribute('id', 'delete-dialog')
     moverlay.classList.add('modal-overlay', 'flex', 'center-page')
     var modal = document.createElement('div')
     moverlay.appendChild(modal)
@@ -816,23 +867,7 @@ var Conn = (function () {
     del.classList.add('btn', 'btn-primary')
     del.innerHTML = 'Yes, delete it'
     del.addEventListener('click', function () {
-      header.innerHTML = ''
-      footer.innerHTML = ''
-      body.innerHTML = `<div class="icon-success svg text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="72px" height="72px">
-          <g fill="none" stroke="#43C47A" stroke-width="2">
-            <circle cx="36" cy="36" r="35" style="stroke-dasharray:240px, 240px; stroke-dashoffset: 480px;"></circle>
-            <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
-          </g>
-        </svg>
-        <h6 class="green">Success!</h6>
-      </div>`
-
-      window.setTimeout(function () {
-        moverlay.parentNode.removeChild(moverlay)
-      }, 1500)
-
-      deleteFromList(profile.webid)
+      removeConnection(profile.webid)
     }, false)
   }
 
