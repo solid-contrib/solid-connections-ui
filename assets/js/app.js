@@ -122,43 +122,53 @@ var Conn = (function () {
   // TODO this belongs in Solid.js
   var registerType = function (profile) {
     if (profile.storage.length > 0) {
-      Solid.web.createContainer(profile.storage, appContainer, {})
-        .then(function (meta) {
-          var classToRegister = Solid.vocab.solid('PrivateConnections')
-          // TODO add UI for storage selection
-          var locationToRegister = Solid.util.absoluteUrl(profile.storage[0], meta.url)
-          locationToRegister += '/privIndex.ttl'
-          var isListed = false
-          profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
-            .then(function (profile) {
-              var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
-              classToRegister = Solid.vocab.solid('PublicConnections')
-              // TODO add UI for storage selection
-              locationToRegister = Solid.util.absoluteUrl(profile.storage[0], meta.url)
-              locationToRegister += '/pubIndex.ttl'
-              isListed = true
-              profile.registerType(classToRegister, locationToRegister, 'instance', isListed)
-                .then(function (profile) {
-                  var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
-                  User.webid = profile.webId
-                  User.pubIndexes = pubIndexes
-                  User.privIndexes = privIndexes
-                  loadConnections()
-                })
-                .catch(function (err) {
-                  console.log('Could not create public data registry:', err)
-                  addFeedback('error', 'Could not create public data registry')
-                })
+      Solid.web.createContainer(profile.storage, appContainer, {}).then(function (meta) {
+        var classToRegister = Solid.vocab.solid('PrivateConnections')
+        // TODO add UI for storage selection
+        var dataLocation = Solid.util.absoluteUrl(profile.storage[0], meta.url)
+        var slug = 'privIndex.ttl'
+        var isListed = false
+        Solid.web.post(dataLocation, null, slug).then(function (response) {
+          var location = Solid.util.absoluteUrl(dataLocation, response.url)
+          profile.registerType(classToRegister, location, 'instance', isListed).then(function (profile) {
+            var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
+            classToRegister = Solid.vocab.solid('PublicConnections')
+            // TODO add UI for storage selection
+            var location = Solid.util.absoluteUrl(profile.storage[0], meta.url)
+            slug = 'pubIndex.ttl'
+            isListed = true
+            Solid.web.post(dataLocation, null, slug).then(function (response) {
+              location = Solid.util.absoluteUrl(dataLocation, response.url)
+              profile.registerType(classToRegister, location, 'instance', isListed).then(function (profile) {
+                var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
+                User.webid = profile.webId
+                User.pubIndexes = pubIndexes
+                User.privIndexes = privIndexes
+                loadConnections()
+              })
+              .catch(function (err) {
+                console.log('Could not create public data registry:', err)
+                addFeedback('error', 'Could not create public data registry')
+              })
             })
             .catch(function (err) {
-              console.log('Could not create private data registry:', err)
-              addFeedback('error', 'Could not create private data registry')
+              console.log('Could not create public connection index:', err)
+              addFeedback('error', 'Could not create public connection index')
             })
+          })
+          .catch(function (err) {
+            console.log('Could not create private data registry:', err)
+            addFeedback('error', 'Could not create private data registry')
+          })
+        }).catch(function (err) {
+          console.log('Could not create private connection index:', err)
+          addFeedback('error', 'Could not create private connection index')
         })
-        .catch(function (err) {
-          console.log('Could not create data folder for app:', err)
-          addFeedback('error', 'Could not create data folder for app')
-        })
+      })
+      .catch(function (err) {
+        console.log('Could not create data folder for app:', err)
+        addFeedback('error', 'Could not create data folder for app')
+      })
     }
   }
 
@@ -355,11 +365,6 @@ var Conn = (function () {
       delete Connections[webid]
       // Remove the UI element
       uList.remove('webid', webid)
-      if (uList.visibleItems.length === 0) {
-        hideElement(searchElement)
-        hideElement(actionsElement)
-        showElement(welcome)
-      }
       cancelView()
     })
     .catch(function (err) {
@@ -529,7 +534,13 @@ var Conn = (function () {
   var cancelView = function () {
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
-    showElement(actionsElement)
+    if (uList.visibleItems.length === 0) {
+      hideElement(searchElement)
+      hideElement(actionsElement)
+      showElement(welcome)
+    } else {
+      showElement(actionsElement)
+    }
   }
 
   var extendedLook = function (profile, parent) {
