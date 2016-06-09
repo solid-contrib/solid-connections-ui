@@ -1,4 +1,4 @@
-var Conn = (function () {
+(function () {
   var $rdf = window.$rdf
 
   // constants
@@ -1145,16 +1145,10 @@ var Conn = (function () {
     })
   }
 
-  // var localUser = loadLocalUser()
-  // if (localUser) {
-  //   loadConnections(localUser.locations)
-  // } else {
-  // }
-
   // public methods
-  return {
-    user: User,
-    addFeedback: addFeedback,
-    registerApp: registerApp
-  }
+  // return {
+  //   user: User,
+  //   addFeedback: addFeedback,
+  //   registerApp: registerApp
+  // }
 })()
