@@ -358,7 +358,7 @@
       item.initials = getInitials(profile.name)
     }
     if (profile.email) {
-      item.picture = profile.picture
+      item.email = profile.email
     }
     item.status = profile.status || 'invitation sent'
     // Add to list of connections
@@ -521,7 +521,9 @@
           if (addr.indexOf('mailto:') === 0) {
             addr = addr.slice(7)
           }
-          profile.emails.push(addr)
+          if (profile.emails.indexOf(addr) < 0) {
+            profile.emails.push(addr)
+          }
         }
       })
     }
@@ -530,12 +532,14 @@
     if (phones.length > 0) {
       profile.phones = []
       phones.forEach(function (phone) {
-        var addr = phone.object.uri
-        if (addr && addr.length > 0) {
-          if (addr.indexOf('tel:') === 0) {
-            addr = addr.slice(4)
+        var tel = phone.object.uri
+        if (tel && tel.length > 0) {
+          if (tel.indexOf('tel:') === 0) {
+            tel = tel.slice(4)
           }
-          profile.phones.push(addr)
+          if (profile.phones.indexOf(tel) < 0) {
+            profile.phones.push(tel)
+          }
         }
       })
     }
@@ -545,7 +549,7 @@
       profile.homepages = []
       homepages.forEach(function (homepage) {
         var url = homepage.object.uri
-        if (url && url.length > 0) {
+        if (profile.homepages.indexOf(url) < 0) {
           profile.homepages.push(url)
         }
       })
@@ -653,7 +657,6 @@
     body.appendChild(section)
 
     if (profile.emails && profile.emails.length > 0) {
-      console.log(profile.emails)
       profile.emails.forEach(function (addr) {
         div = document.createElement('div')
         div.classList.add('card-meta')
