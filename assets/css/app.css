@@ -200,6 +200,10 @@ html, body {
   margin: 0;
 }
 
+.half-width {
+  width: 50%;
+}
+
 /* SLIDER */
 .slider {
     transform: translateX(-100%);
