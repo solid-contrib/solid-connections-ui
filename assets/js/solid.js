@@ -100,7 +100,7 @@ function currentUser () {
   return login(currentPageUrl)
     .catch(function (reason) {
       // console.log('Detecting current user failed: %o', reason)
-      return null
+      return reason
     })
 }
 
@@ -161,8 +161,11 @@ function login (url, alternateAuthUrl) {
         // If not logged in, try logging in at an alternate endpoint
         return webClient.head(alternateAuthUrl)
           .then(function (solidResponse) {
-            // Will return an empty string is this login also fails
+            // Will return an empty string if this login also fails
             return solidResponse.user
+          })
+          .catch(function (err) {
+            throw new Error('Could not sign in:' + err)
           })
       }
     })

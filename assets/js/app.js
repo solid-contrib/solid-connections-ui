@@ -219,6 +219,12 @@ var Conn = (function () {
 
     hideElement(signin)
 
+    // Handle routes/states
+    var referrer = queryVals['referrer']
+    if (referrer && referrer.length > 0) {
+      connectBack(referrer)
+    }
+
     var indexes = User.privIndexes.concat(User.pubIndexes).map(function (index) {
       // done loading
       return Solid.web.get(index.locationUri)
@@ -296,7 +302,19 @@ var Conn = (function () {
     profile.graph.forEach(function (st) {
       toAdd.push(st.toNT())
     })
-    var defaultIndex = (isPublic) ? User.pubIndexes[0].locationUri : User.privIndexes[0].locationUri
+    if (User.pubIndexes.length === 0 && User.privIndexes) {
+      console.log('Error saving new contact. Could not find an index document to store the new connection.')
+      addFeedback('error', 'Error saving new contact')
+      return
+    }
+    var defaultIndex
+    if (User.privIndexes.length > 0 && User.privIndexes[0].locationUri) {
+      defaultIndex = User.privIndexes[0].locationUri
+    }
+    if (isPublic &&
+      User.pubIndexes.length > 0 && User.pubIndexes[0].locationUri) {
+      defaultIndex = User.pubIndexes[0].locationUri
+    }
     profile.locationUri = defaultIndex
     Solid.web.patch(defaultIndex, toDel, toAdd)
       .then(function () {
@@ -308,6 +326,10 @@ var Conn = (function () {
         var content = User.name + ' has just connected with you!' +
                       ' Click here to connect with this person -- ' + link
         sendNotification(profile.inbox, title, content)
+      })
+      .catch(function (err) {
+        console.log('Error saving new contact:' + err)
+        addFeedback('error', 'Error saving new contact')
       })
   }
 
@@ -392,6 +414,16 @@ var Conn = (function () {
       console.log(err)
       addFeedback('error', 'Could not remove connection from server')
     })
+  }
+
+  // Handle connect back case
+  var connectBack = function (webid) {
+    document.getElementById('webid').value = webid
+    // clear the contents of the modal
+    hideElement(lookupElement)
+    hideElement(infoButtons)
+    showModal()
+    findWebID()
   }
 
   // Fetch a WebID profile using Solid.js
@@ -620,7 +652,8 @@ var Conn = (function () {
     section.appendChild(label)
     body.appendChild(section)
 
-    if (profile.emails) {
+    if (profile.emails && profile.emails.length > 0) {
+      console.log(profile.emails)
       profile.emails.forEach(function (addr) {
         div = document.createElement('div')
         div.classList.add('card-meta')
@@ -644,7 +677,7 @@ var Conn = (function () {
     section.appendChild(label)
     body.appendChild(section)
 
-    if (profile.phones) {
+    if (profile.phones && profile.phones.length > 0) {
       profile.phones.forEach(function (phone) {
         var div = document.createElement('div')
         div.classList.add('card-meta')
@@ -668,7 +701,7 @@ var Conn = (function () {
     section.appendChild(label)
     body.appendChild(section)
 
-    if (profile.homepages) {
+    if (profile.homepages && profile.homepages.length > 0) {
       profile.homepages.forEach(function (page) {
         var div = document.createElement('div')
         div.classList.add('card-meta')
@@ -745,7 +778,9 @@ var Conn = (function () {
     if (profile.emails) {
       var email = document.createElement('h6')
       email.classList.add('card-meta')
-      email.innerHTML = profile.emails[0]
+      if (profile.emails[0] && profile.emails[0].length > 0) {
+        email.innerHTML = profile.emails[0]
+      }
       header.appendChild(email)
     }
 
@@ -1090,13 +1125,23 @@ var Conn = (function () {
 
   var signUserIn = function () {
     Solid.login().then(function (webid) {
-      initApp(webid)
+      if (!webid || webid.length === 0) {
+        console.log('Could not sign you in. Empty User header returned by server.')
+        addFeedback('error', 'Could not sign you in.')
+      } else {
+        initApp(webid)
+      }
     })
   }
 
   var signUserUp = function () {
     Solid.signup().then(function (webid) {
-      initApp(webid)
+      if (!webid || webid.length === 0) {
+        console.log('Could not sign you in. Empty User header returned by server.')
+        addFeedback('error', 'Could not sign you in.')
+      } else {
+        initApp(webid)
+      }
     })
   }
 

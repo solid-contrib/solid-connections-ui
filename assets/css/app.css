@@ -138,7 +138,7 @@ html, body {
 
 .feedback {
   padding-bottom: 1rem;
-  z-index: 102;
+  z-index: 1002;
 }
 
 .user {
@@ -192,7 +192,7 @@ html, body {
   padding: 1rem;
 }
 
-.no-h3-top {
+.no-h-top {
   margin-top: -2.5rem;
 }
 
