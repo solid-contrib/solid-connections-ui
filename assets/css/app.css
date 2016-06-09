@@ -102,7 +102,7 @@ html, body {
 }
 .user-picture {
   height: 15rem;
-  width: auto;
+  width: 15rem;
 }
 .card-meta {
   color: #333 !important;
