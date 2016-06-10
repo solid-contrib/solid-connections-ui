@@ -410,6 +410,9 @@
       delete Connections[webid]
       // Remove the UI element
       uList.remove('webid', webid)
+      if (uList.size() === 0) {
+        showElement(start)
+      }
       cancelView()
     })
     .catch(function (err) {
@@ -1162,6 +1165,7 @@
     hideElement(searchElement)
     hideElement(actionsElement)
     hideElement(connections)
+    hideElement(start)
     showElement(status)
     showElement(signin)
 
