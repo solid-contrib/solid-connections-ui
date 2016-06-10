@@ -10,6 +10,7 @@
   var signin = document.getElementById('signin')
   var signinBtn = document.getElementById('signin-btn')
   var signupBtn = document.getElementById('signup-btn')
+  var signoutBtn = document.getElementById('signout')
   var status = document.getElementById('status')
   var welcome = document.getElementById('welcome')
   var start = document.getElementById('start')
@@ -19,6 +20,7 @@
   var cancelViews = document.getElementsByClassName('cancel-view')
   var noUsersFound = document.getElementById('no-users')
   var user = document.getElementById('user')
+  var connections = document.getElementById('connections')
   var extendedInfo = document.getElementById('extended-info')
   var actionsElement = document.getElementById('actions')
   var feedback = document.getElementById('feedback')
@@ -1062,6 +1064,10 @@
     signUserUp()
   }, false)
 
+  signoutBtn.addEventListener('click', function () {
+    signUserOut()
+  }, false)
+
   // search event listener
   search.addEventListener('keyup', function () {
     searchList()
@@ -1115,6 +1121,10 @@
 
   // INIT APP
   var initApp = function (webid) {
+    hideElement(signin)
+    showElement(welcome)
+    showElement(connections)
+
     // register App
     registerApp(webid)
     if (uList.visibleItems.length === 0) {
@@ -1138,7 +1148,7 @@
   }
 
   var signUserUp = function () {
-    Solid.signup().then(function (webid) {
+    Solid.login().then(function (webid) {
       if (!webid || webid.length === 0) {
         console.log('Could not sign you in. Empty User header returned by server.')
         addFeedback('error', 'Could not sign you in.')
@@ -1146,6 +1156,17 @@
         initApp(webid)
       }
     })
+  }
+
+  var signUserOut = function () {
+    hideElement(searchElement)
+    hideElement(actionsElement)
+    hideElement(connections)
+    showElement(status)
+    showElement(signin)
+
+    // clear connections list
+    uList.clear()
   }
 
   // public methods
