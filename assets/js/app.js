@@ -1,4 +1,4 @@
-(function () {
+var Conn = (function () {
   var $rdf = window.$rdf
 
   // constants
@@ -81,7 +81,7 @@
   // Discovers where connections data is stored using the type registry
   // (also triggers a registration if no locations are found)
   var registerApp = function (webid) {
-    status.innerHTML = newStatus('Loading your profile...')
+    status.innerHTML = newStatus('Loading your profile data...')
     return Solid.identity.getProfile(webid)
       .then(function (profile) {
         var localUser = importSolidProfile(profile)
@@ -89,10 +89,10 @@
         User.name = localUser.name
         User.inbox = localUser.inbox
         // We need to register
+        status.innerHTML = newStatus('Loading app data registry...')
         if (!profile.typeIndexListed.uri) {
           console.log('No registry found')
           // Create typeIndex
-          status.innerHTML = newStatus('Initializing app...')
           profile.initTypeRegistry().then(function (profile) {
             registerType(profile)
           })
@@ -100,7 +100,6 @@
           console.log('Found registry', profile.typeIndexListed.uri)
           // Load registry and find location for data
           // TODO add ConnectionsIndex to the solid terms vocab
-          status.innerHTML = newStatus('Loading app data...')
           profile.loadTypeRegistry()
             .then(function (profile) {
               var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
@@ -129,13 +128,17 @@
   // TODO this belongs in Solid.js
   var registerType = function (profile) {
     if (profile.storage.length > 0) {
+      status.innerHTML = newStatus('Creating app storage...')
       Solid.web.createContainer(profile.storage, appContainer, {}).then(function (meta) {
         var classToRegister = Solid.vocab.solid('PrivateConnections')
         // TODO add UI for storage selection
         var dataLocation = Solid.util.absoluteUrl(profile.storage[0], meta.url)
         var slug = 'privIndex.ttl'
         var isListed = false
+        // create the index documents
+        status.innerHTML = newStatus('Initializing app data registry (1/4)...')
         Solid.web.post(dataLocation, null, slug).then(function (response) {
+          status.innerHTML = newStatus('Initializing app data registry (2/4)...')
           var location = Solid.util.absoluteUrl(dataLocation, response.url)
           profile.registerType(classToRegister, location, 'instance', isListed).then(function (profile) {
             var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
@@ -144,7 +147,9 @@
             var location = Solid.util.absoluteUrl(profile.storage[0], meta.url)
             slug = 'pubIndex.ttl'
             isListed = true
+            status.innerHTML = newStatus('Initializing app data registry (3/4)...')
             Solid.web.post(dataLocation, null, slug).then(function (response) {
+              status.innerHTML = newStatus('Initializing app data registry (4/4)...')
               location = Solid.util.absoluteUrl(dataLocation, response.url)
               profile.registerType(classToRegister, location, 'instance', isListed).then(function (profile) {
                 var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
@@ -1180,9 +1185,10 @@
   }
 
   // public methods
-  // return {
-  //   user: User,
-  //   addFeedback: addFeedback,
-  //   registerApp: registerApp
-  // }
+  return {
+    user: User,
+    addFeedback: addFeedback,
+    registerApp: registerApp,
+    initApp: initApp
+  }
 })()
