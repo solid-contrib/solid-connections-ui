@@ -429,6 +429,12 @@
     hideElement(infoButtons)
     showModal()
     findWebID()
+    // update URL
+    window.history.replaceState(
+      null,
+      document.title,
+      appUrl
+    )
   }
 
   // Fetch a WebID profile using Solid.js
@@ -974,12 +980,12 @@
     var title = document.createElement('div')
     header.appendChild(title)
     title.classList.add('modal-title')
-    title.innerHTML = 'Delete Connection'
+    title.innerHTML = 'Remove Connection'
 
     body = document.createElement('div')
     container.appendChild(body)
     body.classList.add('modal-body')
-    body.innerHTML = '<h4 class"text-center">Are you sure you want to delete this connection?</h4>'
+    body.innerHTML = '<h4 class"text-center">Are you sure you want to remove this connection?</h4>'
 
     var footer = document.createElement('div')
     container.appendChild(footer)
@@ -996,7 +1002,7 @@
     var del = document.createElement('button')
     footer.appendChild(del)
     del.classList.add('btn', 'btn-primary')
-    del.innerHTML = 'Yes, delete it'
+    del.innerHTML = 'Yes, remove it'
     del.addEventListener('click', function () {
       removeConnection(profile.webid)
     }, false)
@@ -1151,7 +1157,7 @@
   }
 
   var signUserUp = function () {
-    Solid.login().then(function (webid) {
+    Solid.signup().then(function (webid) {
       if (!webid || webid.length === 0) {
         console.log('Could not sign you in. Empty User header returned by server.')
         addFeedback('error', 'Could not sign you in.')
