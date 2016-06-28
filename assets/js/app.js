@@ -3,10 +3,11 @@ var Conn = (function () {
 
   // constants
   const appContainer = 'connections'
-  const appUrl = document.location.protocol + '//' + document.location.host +
-                document.location.pathname
+  const appOrigin = document.location.protocol + '//' + document.location.host
+  const appUrl = appOrigin + document.location.pathname
 
   // init static elements
+  var signinUrl = document.getElementById('signin-app')
   var signin = document.getElementById('signin')
   var signinBtn = document.getElementById('signin-btn')
   var signupBtn = document.getElementById('signup-btn')
@@ -61,7 +62,7 @@ var Conn = (function () {
   var connectionTemplate = '<div class="user-card pointer center">' +
     '<div class="webid tooltip" data-tooltip="View details">' +
     '<div class="center">' +
-    ' <figure class="avatar avatar-xl initials">' +
+    ' <figure class="avatar avatar-xl">' +
     '   <img class="picture">' +
     ' </figure>' +
     '</div>' +
@@ -361,8 +362,7 @@ var Conn = (function () {
     if (profile.picture) {
       item.picture = profile.picture
     } else {
-      item.picture = 'assets/images/empty.png'
-      item.initials = getInitials(profile.name)
+      item.picture = 'assets/images/avatar.png'
     }
     if (profile.email) {
       item.email = profile.email
@@ -526,6 +526,8 @@ var Conn = (function () {
     }
     if (pic && pic.uri.length > 0) {
       profile.picture = pic.uri
+    } else {
+      profile.picture = 'assets/images/avatar.png'
     }
 
     var emails = g.statementsMatching(webidRes, Solid.vocab.foaf('mbox'))
@@ -836,26 +838,6 @@ var Conn = (function () {
     parent.appendChild(card)
   }
 
-  var getInitials = function (name) {
-    var initials = ''
-    if (name.length <= 2) {
-      return name.toUpperCase()
-    }
-    if (name.indexOf(' ') >= 0) {
-      var pieces = name.split(' ')
-      for (var i = 0; i < pieces.length; i++) {
-        if (initials.length > 0) {
-          initials += ' '
-        }
-        initials += pieces[i][0].toUpperCase()
-        if (i === 1) {
-          break
-        }
-      }
-    }
-    return initials
-  }
-
   // ------------ FEEDBACK ------------
 
   // Add visual feedback (toast) element to the DOM
@@ -1114,6 +1096,26 @@ var Conn = (function () {
     }, false)
   }
 
+  // signin postMessage
+  signinUrl.src = 'http://localhost:9000/?app=' + encodeURIComponent(appUrl) +
+    '&origin=' + encodeURIComponent(appOrigin)
+
+  var eventMethod = window.addEventListener
+        ? 'addEventListener'
+        : 'attachEvent'
+  var eventListener = window[eventMethod]
+  var messageEvent = eventMethod === 'attachEvent'
+        ? 'onmessage'
+        : 'message'
+  var receiveMessage = function (event) {
+    console.log('Child message:', event.data)
+  }
+  eventListener(messageEvent, receiveMessage, true)
+
+  var postMessage = function (msg) {
+    signinUrl.contentWindow.postMessage(msg, '*')
+  }
+
   // Init
   var listOptions = {
     listClass: 'connections-list',
@@ -1187,6 +1189,7 @@ var Conn = (function () {
   // public methods
   return {
     user: User,
+    postMessage: postMessage,
     addFeedback: addFeedback,
     registerApp: registerApp,
     initApp: initApp
