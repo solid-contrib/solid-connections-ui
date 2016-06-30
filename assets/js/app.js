@@ -1097,24 +1097,24 @@ var Conn = (function () {
   }
 
   // signin postMessage
-  signinUrl.src = 'http://localhost:9000/?app=' + encodeURIComponent(appUrl) +
-    '&origin=' + encodeURIComponent(appOrigin)
+  // signinUrl.src = 'http://localhost:9000/?app=' + encodeURIComponent(appUrl) +
+    // '&origin=' + encodeURIComponent(appOrigin)
 
-  var eventMethod = window.addEventListener
-        ? 'addEventListener'
-        : 'attachEvent'
-  var eventListener = window[eventMethod]
-  var messageEvent = eventMethod === 'attachEvent'
-        ? 'onmessage'
-        : 'message'
-  var receiveMessage = function (event) {
-    console.log('Child message:', event.data)
-  }
-  eventListener(messageEvent, receiveMessage, true)
-
-  var postMessage = function (msg) {
-    signinUrl.contentWindow.postMessage(msg, '*')
-  }
+  // var eventMethod = window.addEventListener
+  //       ? 'addEventListener'
+  //       : 'attachEvent'
+  // var eventListener = window[eventMethod]
+  // var messageEvent = eventMethod === 'attachEvent'
+  //       ? 'onmessage'
+  //       : 'message'
+  // var receiveMessage = function (event) {
+  //   console.log('Child message:', event.data)
+  // }
+  // eventListener(messageEvent, receiveMessage, true)
+  //
+  // var postMessage = function (msg) {
+  //   signinUrl.contentWindow.postMessage(msg, '*')
+  // }
 
   // Init
   var listOptions = {
