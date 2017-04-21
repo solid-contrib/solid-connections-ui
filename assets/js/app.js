@@ -1,4 +1,6 @@
-var Conn = (function () {
+var Connections = Connections || {}
+
+Connections = (function () {
   var $rdf = window.$rdf
 
   // constants
@@ -7,7 +9,7 @@ var Conn = (function () {
   const appUrl = appOrigin + document.location.pathname
 
   // init static elements
-  var signinUrl = document.getElementById('signin-app')
+  // var signinUrl = document.getElementById('signin-app')
   var signin = document.getElementById('signin')
   var signinBtn = document.getElementById('signin-btn')
   var signupBtn = document.getElementById('signup-btn')
@@ -34,7 +36,10 @@ var Conn = (function () {
   var lookupElement = document.getElementById('lookup')
   var profileInfo = document.getElementById('profile-info')
 
-  var Solid = require('solid')
+  var SolidClient = window.SolidClient
+
+  var twinqlEndpoint = 'https://databox.me/,query'
+  var proxyEndpoint = 'https://databox.me/,proxy?uri='
 
   // User object
   var User = {}
@@ -78,114 +83,86 @@ var Conn = (function () {
 
   // ------------ END LIST CONF ------------
 
-  // ------------ TYPE REGISTRY ------------
-  // Discovers where connections data is stored using the type registry
-  // (also triggers a registration if no locations are found)
-  var registerApp = function (webid) {
-    status.innerHTML = newStatus('Loading your profile data...')
-    return Solid.identity.getProfile(webid)
-      .then(function (profile) {
-        var localUser = importSolidProfile(profile)
-        User.webid = profile.webId
-        User.name = localUser.name
-        User.inbox = localUser.inbox
-        // We need to register
-        status.innerHTML = newStatus('Loading app data registry...')
-        if (!profile.typeIndexListed.uri) {
-          console.log('No registry found')
-          // Create typeIndex
-          profile.initTypeRegistry().then(function (profile) {
-            registerType(profile)
-          })
-        } else {
-          console.log('Found registry', profile.typeIndexListed.uri)
-          // Load registry and find location for data
-          // TODO add ConnectionsIndex to the solid terms vocab
-          profile.loadTypeRegistry()
-            .then(function (profile) {
-              var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
-              var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
-              if (pubIndexes.concat(privIndexes).length === 0) {
-                // register
-                registerType(profile)
-              } else {
-                User.pubIndexes = pubIndexes
-                User.privIndexes = privIndexes
-                loadConnections()
-              }
-            })
-            .catch(function (err) {
-              console.log('Could not load type registry:', err)
-            })
+  // Send a twinql query and return a promise containing JSON-LD
+  var twinqlQuery = function (query) {
+    return new Promise(function (resolve, reject) {
+      if (query.length === 0) {
+        var noquery = {
+          msg: 'No query to submit',
+          status: 0
         }
-      })
-      .catch(function (err) {
-        console.log('Could not load profile:', err)
-        addFeedback('error', 'Could not load profile data')
-      })
+        return reject(noquery)
+      }
+      var req = new window.XMLHttpRequest()
+
+      // define onload behavior
+      req.onload = function (e) {
+        return resolve(req.responseText)
+      }
+      // define onerror behavior
+      req.onerror = function (e) {
+        var err = {
+          msg: e.statusText,
+          status: e.status
+        }
+        return reject(err)
+      }
+      req.open('POST', twinqlEndpoint)
+      req.setRequestHeader('Content-Type', 'text/plain')
+      req.send(query)
+    }).catch(function (err) {
+      throw new Error('Something went wrong in the twinql request: ' + err)
+    })
   }
 
-  // Register the app data location with the type registry
-  // TODO this belongs in Solid.js
-  var registerType = function (profile) {
-    if (profile.storage.length > 0) {
-      status.innerHTML = newStatus('Creating app storage...')
-      Solid.web.createContainer(profile.storage, appContainer, {}).then(function (meta) {
-        var classToRegister = Solid.vocab.solid('PrivateConnections')
-        // TODO add UI for storage selection
-        var dataLocation = Solid.util.absoluteUrl(profile.storage[0], meta.url)
-        var slug = 'privIndex.ttl'
-        var isListed = false
-        // create the index documents
-        status.innerHTML = newStatus('Initializing app data registry (1/4)...')
-        Solid.web.post(dataLocation, null, slug).then(function (response) {
-          status.innerHTML = newStatus('Initializing app data registry (2/4)...')
-          var location = Solid.util.absoluteUrl(dataLocation, response.url)
-          profile.registerType(classToRegister, location, 'instance', isListed).then(function (profile) {
-            var privIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PrivateConnections'))
-            classToRegister = Solid.vocab.solid('PublicConnections')
-            // TODO add UI for storage selection
-            var location = Solid.util.absoluteUrl(profile.storage[0], meta.url)
-            slug = 'pubIndex.ttl'
-            isListed = true
-            status.innerHTML = newStatus('Initializing app data registry (3/4)...')
-            Solid.web.post(dataLocation, null, slug).then(function (response) {
-              status.innerHTML = newStatus('Initializing app data registry (4/4)...')
-              location = Solid.util.absoluteUrl(dataLocation, response.url)
-              profile.registerType(classToRegister, location, 'instance', isListed).then(function (profile) {
-                var pubIndexes = profile.typeRegistryForClass(Solid.vocab.solid('PublicConnections'))
-                User.webid = profile.webId
-                User.pubIndexes = pubIndexes
-                User.privIndexes = privIndexes
-                loadConnections()
-              })
-              .catch(function (err) {
-                console.log('Could not create public data registry:', err)
-                addFeedback('error', 'Could not create public data registry')
-              })
-            })
-            .catch(function (err) {
-              console.log('Could not create public connection index:', err)
-              addFeedback('error', 'Could not create public connection index')
-            })
-          })
-          .catch(function (err) {
-            console.log('Could not create private data registry:', err)
-            addFeedback('error', 'Could not create private data registry')
-          })
-        }).catch(function (err) {
-          console.log('Could not create private connection index:', err)
-          addFeedback('error', 'Could not create private connection index')
-        })
+  var loadUser = function (query) {
+    return new Promise(function (resolve, reject) {
+      if (query.length === 0) {
+        // deal with the exception
+        return reject('No query was provided')
+      }
+      twinqlQuery(query).then(function (data) {
+        var profile = loadProfile(JSON.parse(data))
+        return resolve(profile)
+      }).catch(function (err) {
+        console.log(err)
       })
-      .catch(function (err) {
-        console.log('Could not create data folder for app:', err)
-        addFeedback('error', 'Could not create data folder for app')
-      })
+    })
+  }
+
+  // Load my friends
+  var loadExtendedUser = function (webid) {
+    if (webid.length === 0) {
+      // deal with the exception
+      return
     }
-  }
+    status.innerHTML = newStatus('Loading your profile data and social graph...')
+    var profileTemplate = `
+      foaf:name
+      foaf:givenName
+      foaf:familyName
+      foaf:nick
+      foaf:img
+      foaf:depiction
+      [ foaf:mbox ]
+      [ foaf:homepage ]
+      solid:inbox`
+    var query = `@prefix foaf http://xmlns.com/foaf/0.1/
+      @prefix solid http://www.w3.org/ns/solid/terms#
 
-  // -------------- END TYPE REGISTRY --------------
+      ${webid} {
+        ${profileTemplate}
+        [ foaf:knows ] {
+          ${profileTemplate}
+        }
+      }`
+
+    loadUser(query).then(function (profile) {
+      listFriends(profile)
+    }).catch(function (err) {
+      console.log(err)
+    })
+  }
 
   // -------------- SEARCH LIST --------------
   // Search the connections list for a given value
@@ -217,64 +194,12 @@ var Conn = (function () {
     uList.search()
   }
 
-  // -------------- ADD/REMOVE CONNECTIONS --------------
-  var loadConnections = function () {
-    if (!User.pubIndexes && !User.privIndexes) {
-      hideElement(signin)
-      console.log('No data source provided for loading connections')
-      return
-    }
-
+  // Display list of friends
+  var listFriends = function (profile) {
     hideElement(signin)
-
-    // Handle routes/states
-    var referrer = queryVals['referrer']
-    if (referrer && referrer.length > 0) {
-      connectBack(referrer)
-    }
-
-    var indexes = User.privIndexes.concat(User.pubIndexes).map(function (index) {
-      // done loading
-      return Solid.web.get(index.locationUri)
-        .then(function (response) {
-          var g = response.parsedGraph()
-          var connections = g.statementsMatching(
-            undefined,
-            Solid.vocab.rdf('type'),
-            Solid.vocab.solid('Connection')
-          )
-          connections.forEach(function (person) {
-            var profile = {}
-            profile.webid = person.subject.uri
-            profile.public = index.isListed
-            profile.locationUri = index.locationUri
-            profile.graph = g.statementsMatching(person.subject, undefined, undefined)
-            var name = g.any(person.subject, Solid.vocab.foaf('name'))
-            if (name) {
-              profile.name = name.value
-            }
-            var picture = g.any(person.subject, Solid.vocab.foaf('img'))
-            if (picture) {
-              profile.picture = picture.uri
-            }
-            addToList(profile)
-          })
-          return connections.length
-        })
-        .catch(function () {
-          // TODO handle errors in case of missing index files or no access
-          return 0
-        })
-    })
-    Promise.all(indexes).then(function (contacts) {
-      var total = 0
-      contacts.forEach(function (t) {
-        total += t
-      })
-      if (total === 0) {
-        showElement(start)
-      }
-      hideElement(status)
+    profile.knows.forEach(function (friend) {
+      var item = loadProfile(friend)
+      addToList(item)
     })
   }
 
@@ -284,47 +209,20 @@ var Conn = (function () {
   var addConnection = function (profile, isPublic) {
     // var indexType = (isPublic) ?
     var g = $rdf.graph()
-    var webid = $rdf.sym(profile.webid)
+    var webid = $rdf.sym(User.webid)
     g.add(
       webid,
-      Solid.vocab.rdf('type'),
-      Solid.vocab.solid('Connection')
+      SolidClient.vocab.foaf('knows'), // @@@
+      $rdf.sym(profile.webid)
     )
-    if (profile.name) {
-      g.add(
-        webid,
-        Solid.vocab.foaf('name'),
-        $rdf.lit(profile.name)
-      )
-    }
-    if (profile.picture) {
-      g.add(
-        webid,
-        Solid.vocab.foaf('img'),
-        $rdf.sym(profile.picture)
-      )
-    }
     var toAdd = []
     var toDel = null
     profile.graph = g.statementsMatching(webid, undefined, undefined)
     profile.graph.forEach(function (st) {
       toAdd.push(st.toNT())
     })
-    if (User.pubIndexes.length === 0 && User.privIndexes) {
-      console.log('Error saving new contact. Could not find an index document to store the new connection.')
-      addFeedback('error', 'Error saving new contact')
-      return
-    }
-    var defaultIndex
-    if (User.privIndexes.length > 0 && User.privIndexes[0].locationUri) {
-      defaultIndex = User.privIndexes[0].locationUri
-    }
-    if (isPublic &&
-      User.pubIndexes.length > 0 && User.pubIndexes[0].locationUri) {
-      defaultIndex = User.pubIndexes[0].locationUri
-    }
-    profile.locationUri = defaultIndex
-    Solid.web.patch(defaultIndex, toDel, toAdd)
+
+    SolidClient.web.patch(User.webid, toDel, toAdd)
       .then(function () {
         // Update the profile object with the new registry without reloading
         addToList(profile, 'name', 'asc', true)
@@ -388,11 +286,18 @@ var Conn = (function () {
     var toAdd = null
     var toDel = []
 
-    var profile = Connections[webid]
-    profile.graph.forEach(function (st) {
+    var g = $rdf.graph()
+    var me = $rdf.sym(User.webid)
+    g.add(
+      me,
+      SolidClient.vocab.foaf('knows'), // @@@
+      $rdf.sym(webid)
+    )
+    g.statementsMatching(me, undefined, undefined).forEach(function (st) {
       toDel.push(st.toNT())
     })
-    Solid.web.patch(profile.locationUri, toDel, toAdd).then(function () {
+    console.log(toDel)
+    SolidClient.web.patch(User.webid, toDel, toAdd).then(function () {
       var moverlay = document.getElementById('delete-dialog')
       if (moverlay) {
         moverlay.getElementsByClassName('modal-header')[0].innerHTML = ''
@@ -404,7 +309,7 @@ var Conn = (function () {
               <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
             </g>
           </svg>
-          <h6 class="green">Success!</h6>
+          <h6 class="green">Connection removed!</h6>
         </div>`
         window.setTimeout(function () {
           moverlay.parentNode.removeChild(moverlay)
@@ -442,7 +347,7 @@ var Conn = (function () {
     )
   }
 
-  // Fetch a WebID profile using Solid.js
+  // Fetch a WebID profile using twinql
   var findWebID = function () {
     var webid = document.getElementById('webid').value
     if (!webid || webid.length === 0) {
@@ -453,132 +358,75 @@ var Conn = (function () {
 
     showLoadingButton(addNewBtn)
 
-    Solid.identity.getProfile(webid)
-      .then(function (resp) {
-        var profile = importSolidProfile(resp)
-        if (!profile) {
-          addFeedback('error', 'Error parsing profile data')
-        }
-        // clear the contents of the modal
-        hideElement(lookupElement)
-        hideElement(infoButtons)
+    var profileTemplate = `
+      foaf:name
+      foaf:givenName
+      foaf:familyName
+      foaf:nick
+      foaf:img
+      [ foaf:mbox ]
+      [ foaf:homepage ]
+      solid:inbox`
+    var query = `@prefix foaf http://xmlns.com/foaf/0.1/
+      @prefix solid http://www.w3.org/ns/solid/terms#
 
-        quickLook(profile, profileInfo)
-        hideLoadingButton(addNewBtn)
-      })
-      .catch(function (err) {
-        console.log('Could not load profile:', err)
-        addFeedback('error', 'Could not load profile data')
-        hideLoadingButton(addNewBtn)
-        showElement(infoButtons)
-      })
+      ${webid} {
+        ${profileTemplate}
+      }`
+
+    loadUser(query).then(function (profile) {
+      // clear the contents of the modal
+      hideElement(lookupElement)
+      hideElement(infoButtons)
+
+      quickLook(profile, profileInfo)
+      hideLoadingButton(addNewBtn)
+    }).catch(function (err) {
+      console.log('Could not load profile:', err)
+      addFeedback('error', 'Could not load profile data')
+      hideLoadingButton(addNewBtn)
+      showElement(infoButtons)
+    })
   }
 
-  var importSolidProfile = function (data) {
-    if (!data.parsedGraph) {
+  var loadProfile = function (data) {
+    if (data.length === 0) {
       return null
     }
-
-    var g = data.parsedGraph
 
     var profile = {}
 
     // set webid
-    profile.webid = data.webId
-
-    var webidRes = $rdf.sym(data.webId)
-
-    // set name
-    var name = g.any(webidRes, Solid.vocab.foaf('name'))
-    if (name && name.value.length > 0) {
-      profile.name = name.value
+    profile.webid = data['@id']
+    profile.knows = data['foaf:knows']
+    if (data['foaf:img']) {
+      profile.picture = proxy(data['foaf:img'])
+    } else if (data['foaf:depiction']) {
+      profile.picture = proxy(data['foaf:depiction'])
+    }
+    var name = data['foaf:name']
+    var fn = data['foaf:familyName']
+    var gn = data['foaf:givenName']
+    if (name.length > 0) {
+      profile.name = name
     } else {
       profile.name = ''
-      // use familyName and givenName instead of full name
-      var givenName = g.any(webidRes, Solid.vocab.foaf('givenName'))
-      if (givenName) {
-        profile.name += givenName.value
+      if (gn.length > 0) {
+        profile.name += gn
       }
-      var familyName = g.any(webidRes, Solid.vocab.foaf('familyName'))
-      if (familyName) {
-        profile.name += (givenName) ? ' ' + familyName.value : familyName.value
-      }
-      // use nick
-      if (!givenName && !familyName) {
-        var nick = g.any(webidRes, Solid.vocab.foaf('nick'))
-        if (nick) {
-          profile.name = nick.value
-        }
+      if (fn.length > 0) {
+        profile.name += ' ' + fn
       }
     }
-
-    // set picture
-    var img = g.any(webidRes, Solid.vocab.foaf('img'))
-    var pic
-    if (img) {
-      pic = img
-    } else {
-      // check if profile uses depic instead
-      var depic = g.any(webidRes, Solid.vocab.foaf('depiction'))
-      if (depic) {
-        pic = depic
-      }
-    }
-    if (pic && pic.uri.length > 0) {
-      profile.picture = pic.uri
-    } else {
-      profile.picture = 'assets/images/avatar.png'
-    }
-
-    var emails = g.statementsMatching(webidRes, Solid.vocab.foaf('mbox'))
-    if (emails.length > 0) {
-      profile.emails = []
-      emails.forEach(function (email) {
-        var addr = email.object.uri
-        if (addr && addr.length > 0) {
-          if (addr.indexOf('mailto:') === 0) {
-            addr = addr.slice(7)
-          }
-          if (profile.emails.indexOf(addr) < 0) {
-            profile.emails.push(addr)
-          }
-        }
-      })
-    }
-
-    var phones = g.statementsMatching(webidRes, Solid.vocab.foaf('phone'))
-    if (phones.length > 0) {
-      profile.phones = []
-      phones.forEach(function (phone) {
-        var tel = phone.object.uri
-        if (tel && tel.length > 0) {
-          if (tel.indexOf('tel:') === 0) {
-            tel = tel.slice(4)
-          }
-          if (profile.phones.indexOf(tel) < 0) {
-            profile.phones.push(tel)
-          }
-        }
-      })
-    }
-
-    var homepages = g.statementsMatching(webidRes, Solid.vocab.foaf('homepage'))
-    if (homepages.length > 0) {
-      profile.homepages = []
-      homepages.forEach(function (homepage) {
-        var url = homepage.object.uri
-        if (profile.homepages.indexOf(url) < 0) {
-          profile.homepages.push(url)
-        }
-      })
-    }
-
-    var inbox = g.any(webidRes, Solid.vocab.solid('inbox'))
-    if (inbox) {
-      profile.inbox = inbox.uri
-    }
-
+    profile.emails = data['foaf:mbox']
+    profile.homepages = data['foaf:homepage']
+    profile.inbox = proxy(data['solid:inbox'])
+    console.log(profile)
     return profile
+  }
+
+  var proxy = function(uri) {
+    return proxyEndpoint + encodeURIComponent(uri)
   }
 
   var viewProfile = function (webid) {
@@ -588,19 +436,8 @@ var Conn = (function () {
 
     extendedInfo.innerHTML = newStatus('Loading profile data...')
 
-    Solid.identity.getProfile(webid)
-      .then(function (resp) {
-        var profile = importSolidProfile(resp)
-        if (!profile) {
-          addFeedback('error', 'Error parsing profile data')
-        }
-        extendedInfo.innerHTML = ''
-        extendedLook(profile, extendedInfo)
-      })
-      .catch(function (err) {
-        console.log('Could not load profile:', err)
-        addFeedback('error', 'Could not load profile data')
-      })
+    extendedInfo.innerHTML = ''
+    extendedLook(webid, extendedInfo)
   }
 
   var cancelView = function () {
@@ -612,16 +449,21 @@ var Conn = (function () {
       showElement(welcome)
     } else {
       showElement(actionsElement)
+      showElement(connections)
     }
   }
 
-  var extendedLook = function (profile, parent) {
+  var extendedLook = function (webid, parent) {
+    // hide list of connections
+    hideElement(connections)
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
     var image = document.createElement('div')
     image.classList.add('text-center')
     card.appendChild(image)
+
+    var profile = Connections[webid]
 
     if (profile.picture) {
       var picture = document.createElement('img')
@@ -676,6 +518,7 @@ var Conn = (function () {
 
     if (profile.emails && profile.emails.length > 0) {
       profile.emails.forEach(function (addr) {
+        addr = cleanMail(addr)
         div = document.createElement('div')
         div.classList.add('card-meta')
         div.innerHTML = addr
@@ -685,30 +528,6 @@ var Conn = (function () {
       div = document.createElement('div')
       div.classList.add('card-meta', 'grey')
       div.innerHTML = 'No email addresses found.'
-      body.appendChild(div)
-    }
-
-    // Phones
-    section = document.createElement('div')
-    label = document.createElement('h6')
-    icon = document.createElement('i')
-    icon.classList.add('fa', 'fa-phone')
-    label.appendChild(icon)
-    label.innerHTML += ' Phones'
-    section.appendChild(label)
-    body.appendChild(section)
-
-    if (profile.phones && profile.phones.length > 0) {
-      profile.phones.forEach(function (phone) {
-        var div = document.createElement('div')
-        div.classList.add('card-meta')
-        div.innerHTML = phone
-        body.appendChild(div)
-      })
-    } else {
-      div = document.createElement('div')
-      div.classList.add('card-meta', 'grey')
-      div.innerHTML = 'No phone numbers found.'
       body.appendChild(div)
     }
 
@@ -771,6 +590,7 @@ var Conn = (function () {
   }
 
   var quickLook = function (profile, parent) {
+    console.log("Taking a quick look at", profile.name)
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
@@ -800,7 +620,7 @@ var Conn = (function () {
       var email = document.createElement('h6')
       email.classList.add('card-meta')
       if (profile.emails[0] && profile.emails[0].length > 0) {
-        email.innerHTML = profile.emails[0]
+        email.innerHTML = cleanMail(profile.emails[0])
       }
       header.appendChild(email)
     }
@@ -894,27 +714,34 @@ var Conn = (function () {
     }
   }
 
+  var cleanMail = function(addr) {
+    if (addr.indexOf('mailto:') >= 0) {
+      addr = addr.slice(7, addr.length)
+    }
+    return addr
+  }
+
   // ------------ NOTIFICATIONS ------------
   var sendNotification = function (inbox, title, content) {
     var g = $rdf.graph()
     var date = new Date().toISOString()
-    g.add($rdf.sym(''), Solid.vocab.rdf('type'), Solid.vocab.solid('Notification'))
-    g.add($rdf.sym(''), Solid.vocab.dct('title'), $rdf.lit(title))
-    g.add($rdf.sym(''), Solid.vocab.dct('created'), $rdf.lit(date, '', $rdf.NamedNode.prototype.XSDdateTime))
-    g.add($rdf.sym(''), Solid.vocab.sioc('content'), $rdf.lit(content))
-    g.add($rdf.sym(''), Solid.vocab.sioc('has_creator'), $rdf.sym('#author'))
+    g.add($rdf.sym(''), SolidClient.vocab.rdf('type'), SolidClient.vocab.solid('Notification'))
+    g.add($rdf.sym(''), SolidClient.vocab.dct('title'), $rdf.lit(title))
+    g.add($rdf.sym(''), SolidClient.vocab.dct('created'), $rdf.lit(date, '', $rdf.NamedNode.prototype.XSDdateTime))
+    g.add($rdf.sym(''), SolidClient.vocab.sioc('content'), $rdf.lit(content))
+    g.add($rdf.sym(''), SolidClient.vocab.sioc('has_creator'), $rdf.sym('#author'))
 
-    g.add($rdf.sym('#author'), Solid.vocab.rdf('type'), Solid.vocab.sioc('UserAccount'))
-    g.add($rdf.sym('#author'), Solid.vocab.sioc('account_of'), $rdf.sym(User.webid))
+    g.add($rdf.sym('#author'), SolidClient.vocab.rdf('type'), SolidClient.vocab.sioc('UserAccount'))
+    g.add($rdf.sym('#author'), SolidClient.vocab.sioc('account_of'), $rdf.sym(User.webid))
     if (User.name) {
-      g.add($rdf.sym('#author'), Solid.vocab.foaf('name'), $rdf.lit(User.name))
+      g.add($rdf.sym('#author'), SolidClient.vocab.foaf('name'), $rdf.lit(User.name))
     }
     if (User.picture) {
-      g.add($rdf.sym('#author'), Solid.vocab.sioc('avatar'), $rdf.sym(User.picture))
+      g.add($rdf.sym('#author'), SolidClient.vocab.sioc('avatar'), $rdf.sym(User.picture))
     }
 
     var data = new $rdf.Serializer(g).toN3(g)
-    Solid.web.post(inbox, data)
+    SolidClient.web.post(inbox, data)
   }
 
   // ------------ MODAL ------------
@@ -1142,7 +969,9 @@ var Conn = (function () {
     showElement(connections)
 
     // register App
-    registerApp(webid)
+    // registerApp(webid)
+    User.webid = webid
+    loadExtendedUser(webid)
     if (uList.visibleItems.length === 0) {
       showElement(welcome)
     } else {
@@ -1153,7 +982,7 @@ var Conn = (function () {
   }
 
   var signUserIn = function () {
-    Solid.login().then(function (webid) {
+    SolidClient.login().then(function (webid) {
       if (!webid || webid.length === 0) {
         console.log('Could not sign you in. Empty User header returned by server.')
         addFeedback('error', 'Could not sign you in.')
@@ -1161,10 +990,11 @@ var Conn = (function () {
         initApp(webid)
       }
     })
+    // initApp('https://www.w3.org/People/Berners-Lee/card#i')
   }
 
   var signUserUp = function () {
-    Solid.signup().then(function (webid) {
+    SolidClient.signup().then(function (webid) {
       if (!webid || webid.length === 0) {
         console.log('Could not sign you in. Empty User header returned by server.')
         addFeedback('error', 'Could not sign you in.')
@@ -1186,12 +1016,23 @@ var Conn = (function () {
     uList.clear()
   }
 
+  // MISC
+  var first = function (arr) {
+    if (arr.length === 0) {
+      return ''
+    }
+    if (arr[0].length === 0) {
+      return ''
+    }
+    return arr[0]
+  }
+
   // public methods
   return {
     user: User,
-    postMessage: postMessage,
     addFeedback: addFeedback,
-    registerApp: registerApp,
-    initApp: initApp
+    // registerApp: registerApp,
+    initApp: initApp,
+    twinqlQuery: twinqlQuery
   }
 })()

@@ -27,6 +27,11 @@ module.exports = {
   signupEndpoint: 'https://solid.github.io/solid-idps/',
 
   /**
+   * Default twinql endpoints
+   */
+   twinqlEndpoint: 'https://databox.me/,query',
+
+  /**
    * Default height of the Signup popup window, in pixels
    */
   signupWindowHeight: 600,
@@ -306,6 +311,9 @@ function getProfile (profileUrl, options) {
 function loadExtendedProfile (profile, options) {
   var links = profile.relatedProfilesLinks()
   return webClient.loadParsedGraphs(links, options)
+    .catch(function (err) {
+      console.log('Error fetching profile documents', err)
+    })
     .then(function (loadedGraphs) {
       loadedGraphs.forEach(function (graph) {
         if (graph && graph.value) {
@@ -2371,9 +2379,10 @@ var SolidWebClient = {
           var contentType = response.contentType()
           return graphUtil.parseGraph(location, response.raw(), contentType)
         })
-        .catch(function () {
+        .catch(function (err) {
           // Suppress the error, no need to reject, just return null graph
-          return null
+          console.log('Could not fetch ', location, err)
+          throw Error('Could not fetch: ', err)
         })
         .then(function (parsedGraph) {
           return {
@@ -2534,7 +2543,7 @@ module.exports = require('./shorthash');
 /*
 	shorthash
 	(c) 2013 Bibig
-	
+
 	https://github.com/bibig/node-shorthash
 	shorthash may be freely distributed under the MIT license.
 */
@@ -2564,28 +2573,28 @@ function binaryTransfer(integer, binary) {
 	var num;
 	var result = '';
 	var sign = integer < 0 ? '-' : '';
-	
+
 	function table (num) {
 		var t = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 		return t[num];
 	}
-	
+
 	integer = Math.abs(integer);
-	
+
 	while (integer >= binary) {
 		num = integer % binary;
 		integer = Math.floor(integer / binary);
 		stack.push(table(num));
 	}
-	
+
 	if (integer > 0) {
 		stack.push(table(integer));
 	}
-	
+
 	for (var i = stack.length - 1; i >= 0; i--) {
 		result += stack[i];
-	} 
-	
+	}
+
 	return sign + result;
 }
 
@@ -2604,7 +2613,7 @@ function random (_len) {
 	var len = _len || 8 ;
 	return require('crypto').randomBytes(len).toString('hex');
 	*/
-	
+
 	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
 	var rs = '';
 	var len = _len || 8 ;
