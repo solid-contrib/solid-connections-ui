@@ -46,6 +46,11 @@ html, body {
   font-size: 1.6rem;
 }
 
+.avatar.avatar-s {
+  font-size: 1rem;
+}
+
+
 .form-input {
   padding: 2rem 1rem;
   font-size: 1.7rem;
@@ -100,6 +105,10 @@ html, body {
   padding: 1rem;
   border-bottom: 1px solid #ccc;
 }
+.user-card-s {
+  padding: 0.5rem;
+  border-bottom: 0;
+}
 .user-picture {
   height: 15rem;
   width: 15rem;
@@ -124,6 +133,12 @@ html, body {
 
 .name {
   font-size: 1.4em;
+  line-height: 1;
+  font-weight: 200;
+}
+
+.name-s {
+  font-size: 1em;
   line-height: 1;
   font-weight: 200;
 }

@@ -131,12 +131,12 @@ Connections = (function () {
   }
 
   // Load my friends
-  var loadExtendedUser = function (webid) {
+  var loadExtendedUser = function (webid, callback) {
     if (webid.length === 0) {
       // deal with the exception
       return
     }
-    status.innerHTML = newStatus('Loading your profile data and social graph...')
+    status.innerHTML = newStatus('Loading profile data and social graph...')
     var profileTemplate = `
       foaf:name
       foaf:givenName
@@ -158,7 +158,14 @@ Connections = (function () {
       }`
 
     loadUser(query).then(function (profile) {
-      listFriends(profile)
+      // Add to list of connections
+      Connections[profile.webid] = profile
+      var display = (callback)?false:true
+      listFriends(profile, display)
+      if (callback) {
+        console.log("Calling callback...")
+        callback()
+      }
     }).catch(function (err) {
       console.log(err)
     })
@@ -195,12 +202,21 @@ Connections = (function () {
   }
 
   // Display list of friends
-  var listFriends = function (profile) {
+  var listFriends = function (profile, display) {
     hideElement(signin)
-    profile.knows.forEach(function (friend) {
+    profile.friends = []
+    window.Friends = profile.knows
+    profile.knows.filter(function(friend) {
+      return !friend['@error'] && friend['foaf:name']
+    }).forEach(function (friend) {
       var item = loadProfile(friend)
-      addToList(item)
+      profile.friends.push(item)
+      Connections[item.webid] = item
+      if (display) {
+        addToList(item, 'name', 'asc', uList, false)
+      }
     })
+    Connections[profile.webid] = profile
   }
 
   // Add a new connection to the index document
@@ -225,13 +241,17 @@ Connections = (function () {
     SolidClient.web.patch(User.webid, toDel, toAdd)
       .then(function () {
         // Update the profile object with the new registry without reloading
-        addToList(profile, 'name', 'asc', true)
+        addToList(profile, 'name', 'asc', uList, true)
         // send a notification to the user's inbox
         var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
         var title = 'New connection'
         var content = User.name + ' has just connected with you!' +
                       ' Click here to connect with this person -- ' + link
         sendNotification(profile.inbox, title, content)
+        cancelView()
+        deleteElement(card)
+        closeModal()
+        // @@@@
       })
       .catch(function (err) {
         console.log('Error saving new contact:' + err)
@@ -244,13 +264,13 @@ Connections = (function () {
   // @param sort {string} Value to use for sorting (name, email, etc.)
   // @param order {string} Value to use for ordering (asc / desc)
   // @param verbose {bool} If true, show feedback to the user
-  var addToList = function (profile, sort, order, verbose) {
+  var addToList = function (profile, sort, order, toList, verbose) {
     sort = sort || 'name'
     order = order || 'asc'
 
     showElement(lookupElement)
     showElement(infoButtons)
-    if (uList.get('webid', profile.webid).length > 0 && verbose) {
+    if (toList.get('webid', profile.webid).length > 0 && verbose) {
       addFeedback('', 'You are already connected with this person')
       return
     }
@@ -266,10 +286,8 @@ Connections = (function () {
       item.email = profile.email
     }
     item.status = profile.status || 'invitation sent'
-    // Add to list of connections
-    Connections[profile.webid] = profile
     // Add to UI
-    uList.add(item)
+    toList.add(item)
     hideElement(welcome)
     showElement(searchElement)
     showElement(actionsElement)
@@ -278,7 +296,7 @@ Connections = (function () {
     if (verbose) {
       addFeedback('success', 'You have a new connection!')
     }
-    uList.sort(sort, { order: order })
+    toList.sort(sort, { order: order })
   }
 
   // Remove a connection
@@ -393,20 +411,27 @@ Connections = (function () {
     if (data.length === 0) {
       return null
     }
+    var webid = data['@id']
 
-    var profile = {}
+    var profile = Connections[webid]||{}
+
+    var err = data['@error']
+    if (err) {
+      console.log(data)
+      return profile
+    }
 
     // set webid
     profile.webid = data['@id']
-    profile.knows = data['foaf:knows']
+    profile.knows = data['foaf:knows']||[]
     if (data['foaf:img']) {
       profile.picture = proxy(data['foaf:img'])
     } else if (data['foaf:depiction']) {
       profile.picture = proxy(data['foaf:depiction'])
     }
-    var name = data['foaf:name']
-    var fn = data['foaf:familyName']
-    var gn = data['foaf:givenName']
+    var name = data['foaf:name']||""
+    var fn = data['foaf:familyName']||""
+    var gn = data['foaf:givenName']||""
     if (name.length > 0) {
       profile.name = name
     } else {
@@ -418,9 +443,9 @@ Connections = (function () {
         profile.name += ' ' + fn
       }
     }
-    profile.emails = data['foaf:mbox']
-    profile.homepages = data['foaf:homepage']
-    profile.inbox = proxy(data['solid:inbox'])
+    profile.emails = data['foaf:mbox']||[]
+    profile.homepages = data['foaf:homepage']||[]
+    profile.inbox = proxy(data['solid:inbox'])||""
     console.log(profile)
     return profile
   }
@@ -463,6 +488,12 @@ Connections = (function () {
     image.classList.add('text-center')
     card.appendChild(image)
 
+    console.log('Viewing extended profile for', webid, Connections[webid])
+    if (!Connections[webid]) {
+      showElement(actionsElement)
+      extendedInfo.innerHTML = 'Something went wrong.<br>Cannot load profile for' + webid
+    }
+
     var profile = Connections[webid]
 
     if (profile.picture) {
@@ -483,17 +514,9 @@ Connections = (function () {
       body.appendChild(name)
     }
 
-    if (!profile.status) {
-      profile.status = 'invitation sent'
-    }
-    var status = document.createElement('h4')
-    status.classList.add('card-meta', 'text-center', 'status', 'green')
-    status.innerHTML = profile.status
-    body.appendChild(status)
-
     // WebID
     var section = document.createElement('div')
-    var label = document.createElement('h6')
+    var label = document.createElement('h5')
     var icon = document.createElement('i')
     icon.classList.add('fa', 'fa-user')
     label.appendChild(icon)
@@ -508,7 +531,7 @@ Connections = (function () {
 
     // Emails
     section = document.createElement('div')
-    label = document.createElement('h6')
+    label = document.createElement('h5')
     icon = document.createElement('i')
     icon.classList.add('fa', 'fa-envelope-o')
     label.appendChild(icon)
@@ -533,7 +556,7 @@ Connections = (function () {
 
     // Homepages
     section = document.createElement('div')
-    label = document.createElement('h6')
+    label = document.createElement('h5')
     icon = document.createElement('i')
     icon.classList.add('fa', 'fa-link')
     label.appendChild(icon)
@@ -554,6 +577,33 @@ Connections = (function () {
       div.innerHTML = 'No homepage addresses found.'
       body.appendChild(div)
     }
+
+    // Friends
+    section = document.createElement('div')
+    label = document.createElement('h5')
+    icon = document.createElement('i')
+    icon.classList.add('fa', 'fa-users')
+    label.appendChild(icon)
+    label.innerHTML += ' Friends'
+    section.appendChild(label)
+    body.appendChild(section)
+
+    loadExtendedUser(profile.webid, function() {
+      console.log("\nProfile:", profile)
+      if (profile.friends && profile.friends.length > 0) {
+        profile.friends.forEach(function (friend) {
+          var div = listFriend(friend)
+          body.appendChild(div)
+        })
+      } else {
+        div = document.createElement('div')
+        div.classList.add('card-meta', 'grey')
+        div.innerHTML = 'No friends found.'
+        body.appendChild(div)
+      }
+    })
+
+
 
     // Actions
     var footer = document.createElement('div')
@@ -589,6 +639,75 @@ Connections = (function () {
     parent.appendChild(card)
   }
 
+  var listFriend = function(friend) {
+    var friendItem = document.createElement('div')
+    friendItem.classList.add('card-meta')
+
+    var uc = document.createElement('div')
+    friendItem.appendChild(uc)
+    uc.classList.add('user-card-s', 'pointer', 'center')
+
+    var wt = document.createElement('div')
+    uc.appendChild(wt)
+    wt.classList.add('webid', 'tooltip')
+    wt.setAttribute('data-tooltip', 'Connect with this person')
+    wt.id = friend.webid
+    wt.addEventListener('click', function () {
+      document.getElementById('webid').value = friend.webid
+      findWebID()
+      showModal()
+      // deleteElement(card)
+      // showElement(lookupElement)
+      // showElement(infoButtons)
+    }, false)
+
+    var iw = document.createElement('div')
+    wt.appendChild(iw)
+    iw.classList.add('center')
+
+    var fig = document.createElement('figure')
+    iw.appendChild(fig)
+    fig.classList.add('avatar', 'avatar-s')
+
+    var img = document.createElement('img')
+    fig.appendChild(img)
+    img.classList.add('picture')
+    img.src = friend.picture
+    img.setAttribute('alt', 'Picture of '+friend.name)
+
+    var cc = document.createElement('div')
+    wt.appendChild(cc)
+    cc.classList.add('column', 'center')
+
+    var n = document.createElement('div')
+    cc.appendChild(n)
+    n.classList.add('name-s')
+    n.innerHTML = friend.name
+
+    var u = document.createElement('div')
+    cc.appendChild(u)
+    u.classList.add('url', 'grey')
+    u.innerHTML = friend.webid
+
+    // @@@@
+    // friendItem.innerHTML =
+    // `<div class="user-card-s pointer center">
+    //   <div class="webid tooltip" data-tooltip="Connect with this person" id="${friend.webid}">
+        // <div class="center">
+        //   <figure class="avatar avatar-s">
+        //     <img class="picture" src="${friend.picture}">
+        //   </figure>
+        // </div>
+        // <div class="column center">
+        //   <div class="name-s">${friend.name}</div>
+        //   <div class="url grey">${friend.webid}</div>
+        // </div>
+    //   </div>
+    // </div>
+    // `
+    return friendItem
+  }
+
   var quickLook = function (profile, parent) {
     console.log("Taking a quick look at", profile.name)
     var card = document.createElement('div')
@@ -617,7 +736,7 @@ Connections = (function () {
     }
 
     if (profile.emails) {
-      var email = document.createElement('h6')
+      var email = document.createElement('h5')
       email.classList.add('card-meta')
       if (profile.emails[0] && profile.emails[0].length > 0) {
         email.innerHTML = cleanMail(profile.emails[0])
