@@ -251,7 +251,6 @@ Connections = (function () {
         cancelView()
         deleteElement(card)
         closeModal()
-        // @@@@
       })
       .catch(function (err) {
         console.log('Error saving new contact:' + err)
@@ -314,7 +313,6 @@ Connections = (function () {
     g.statementsMatching(me, undefined, undefined).forEach(function (st) {
       toDel.push(st.toNT())
     })
-    console.log(toDel)
     SolidClient.web.patch(User.webid, toDel, toAdd).then(function () {
       var moverlay = document.getElementById('delete-dialog')
       if (moverlay) {
@@ -336,6 +334,9 @@ Connections = (function () {
 
       // Remove the connection from the local list
       delete Connections[webid]
+      if (User.webid) {
+        // @@@ Remove user from local data
+      }
       // Remove the UI element
       uList.remove('webid', webid)
       if (uList.size() === 0) {
@@ -428,6 +429,8 @@ Connections = (function () {
       profile.picture = proxy(data['foaf:img'])
     } else if (data['foaf:depiction']) {
       profile.picture = proxy(data['foaf:depiction'])
+    } else {
+      profile.picture = 'assets/images/avatar.png'
     }
     var name = data['foaf:name']||""
     var fn = data['foaf:familyName']||""
@@ -445,13 +448,18 @@ Connections = (function () {
     }
     profile.emails = data['foaf:mbox']||[]
     profile.homepages = data['foaf:homepage']||[]
-    profile.inbox = proxy(data['solid:inbox'])||""
-    console.log(profile)
+    profile.inbox =proxy(data['solid:inbox'])||""
     return profile
   }
 
   var proxy = function(uri) {
     return proxyEndpoint + encodeURIComponent(uri)
+  }
+
+  var viewAndPush = function (webid) {
+    // push new state to the URL bar
+    pushState('view', webid)
+    viewProfile(webid)
   }
 
   var viewProfile = function (webid) {
@@ -462,10 +470,20 @@ Connections = (function () {
     extendedInfo.innerHTML = newStatus('Loading profile data...')
 
     extendedInfo.innerHTML = ''
-    extendedLook(webid, extendedInfo)
+
+    if (Connections[webid]) {
+      extendedLook(webid, extendedInfo)
+    } else {
+      // load profile first
+      loadExtendedUser(webid, function() {
+        extendedLook(webid, extendedInfo)
+      })
+    }
+
   }
 
-  var cancelView = function () {
+  var cancelView = function (changeState) {
+    status.innerHTML = ''
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
     if (uList.visibleItems.length === 0) {
@@ -475,6 +493,16 @@ Connections = (function () {
     } else {
       showElement(actionsElement)
       showElement(connections)
+    }
+
+    if (changeState) {
+      // push new state
+      if (!User.webid) {
+        signUserOut()
+      } else {
+      // push new state
+        pushState('list', User.webid)
+      }
     }
   }
 
@@ -488,7 +516,7 @@ Connections = (function () {
     image.classList.add('text-center')
     card.appendChild(image)
 
-    console.log('Viewing extended profile for', webid, Connections[webid])
+    console.log('Viewing extended profile for', webid)
     if (!Connections[webid]) {
       showElement(actionsElement)
       extendedInfo.innerHTML = 'Something went wrong.<br>Cannot load profile for' + webid
@@ -496,9 +524,11 @@ Connections = (function () {
 
     var profile = Connections[webid]
 
+    // Picture
     if (profile.picture) {
       var picture = document.createElement('img')
       picture.classList.add('img-responsive', 'centered', 'circle', 'user-picture')
+      picture.setAttribute('alt', profile.name + '\'s picture')
       picture.src = profile.picture
       image.appendChild(picture)
     }
@@ -507,6 +537,7 @@ Connections = (function () {
     card.appendChild(body)
     body.classList.add('card-body')
 
+    // Name
     if (profile.name) {
       var name = document.createElement('h4')
       name.classList.add('card-title', 'text-center')
@@ -526,7 +557,7 @@ Connections = (function () {
 
     var div = document.createElement('div')
     div.classList.add('card-meta')
-    div.innerHTML = profile.webid
+    div.innerHTML = ahref(profile.webid)
     body.appendChild(div)
 
     // Emails
@@ -568,7 +599,7 @@ Connections = (function () {
       profile.homepages.forEach(function (page) {
         var div = document.createElement('div')
         div.classList.add('card-meta')
-        div.innerHTML = page
+        div.innerHTML = ahref(page)
         body.appendChild(div)
       })
     } else {
@@ -588,8 +619,12 @@ Connections = (function () {
     section.appendChild(label)
     body.appendChild(section)
 
+    var loading = document.createElement('div')
+    section.appendChild(loading)
+    loading.innerHTML = newStatus('Loading friends list...')
+
     loadExtendedUser(profile.webid, function() {
-      console.log("\nProfile:", profile)
+      section.removeChild(loading)
       if (profile.friends && profile.friends.length > 0) {
         profile.friends.forEach(function (friend) {
           var div = listFriend(friend)
@@ -610,33 +645,43 @@ Connections = (function () {
     card.appendChild(footer)
     footer.classList.add('card-footer', 'text-center')
 
-    // // new contact button
-    // var button = document.createElement('button')
-    // footer.appendChild(button)
-    // button.classList.add('btn', 'btn-lg', 'btn-primary')
-    // button.innerHTML = 'Create contact'
-    // button.addEventListener('click', function () {
-    //   addToList(profile)
-    //   deleteElement(card)
-    //   closeModal()
-    // }, false)
-
     // remove button
-    var remove = document.getElementById('remove')
-    remove.innerHTML = ''
-    var removeBtn = document.createElement('button')
-    remove.appendChild(removeBtn)
-    removeBtn.classList.add('btn', 'btn-link')
-    var removeIcon = document.createElement('i')
-    removeBtn.appendChild(removeIcon)
-    removeIcon.classList.add('fa', 'fa-trash-o')
-    removeBtn.innerHTML += ' Remove connection'
-    removeBtn.addEventListener('click', function () {
-      removeDialog(profile)
-    })
+    var addremove = document.getElementById('addremove')
+    addremove.innerHTML = ''
+    var addRemoveBtn = document.createElement('button')
+    addremove.appendChild(addRemoveBtn)
+    addRemoveBtn.classList.add('btn', 'btn-link')
+    var addRemoveIcon = document.createElement('i')
+    addRemoveBtn.appendChild(addRemoveIcon)
+
+    if (isFriend(profile.webid)) {
+      // remove option
+      addRemoveIcon.classList.add('fa', 'fa-trash-o')
+      addRemoveBtn.innerHTML += ' Remove connection'
+      addRemoveBtn.addEventListener('click', function () {
+        removeDialog(profile)
+      })
+    } else {
+      // add option
+      addRemoveIcon.classList.add('fa', 'fa-user-plus')
+      addRemoveBtn.innerHTML += ' Add connection'
+      addRemoveBtn.addEventListener('click', function () {
+        addConnection(profile)
+      })
+    }
+
 
     // finish
     parent.appendChild(card)
+  }
+
+  var isFriend = function(friend) {
+    if (Connections[User.webid] && Connections[User.webid].knows.find(function(knows) {
+      return knows['@id'] === friend
+      })) {
+      return true
+    }
+    return false
   }
 
   var listFriend = function(friend) {
@@ -653,12 +698,9 @@ Connections = (function () {
     wt.setAttribute('data-tooltip', 'Connect with this person')
     wt.id = friend.webid
     wt.addEventListener('click', function () {
-      document.getElementById('webid').value = friend.webid
-      findWebID()
-      showModal()
-      // deleteElement(card)
-      // showElement(lookupElement)
-      // showElement(infoButtons)
+      // push new state to the URL bar
+      pushState('view', friend.webid)
+      viewProfile(friend.webid)
     }, false)
 
     var iw = document.createElement('div')
@@ -689,22 +731,6 @@ Connections = (function () {
     u.classList.add('url', 'grey')
     u.innerHTML = friend.webid
 
-    // @@@@
-    // friendItem.innerHTML =
-    // `<div class="user-card-s pointer center">
-    //   <div class="webid tooltip" data-tooltip="Connect with this person" id="${friend.webid}">
-        // <div class="center">
-        //   <figure class="avatar avatar-s">
-        //     <img class="picture" src="${friend.picture}">
-        //   </figure>
-        // </div>
-        // <div class="column center">
-        //   <div class="name-s">${friend.name}</div>
-        //   <div class="url grey">${friend.webid}</div>
-        // </div>
-    //   </div>
-    // </div>
-    // `
     return friendItem
   }
 
@@ -995,7 +1021,34 @@ Connections = (function () {
     '</div>'
   }
 
+  // ------------ PUSH STATE ------------
+  var pushState = function(route, value) {
+    var title = document.getElementsByTagName('title')[0].innerHTML
+    if (route && value) {
+      var state = {
+        'route': route,
+        'value': value
+      }
+      window.history.pushState(state, document.querySelector('title').value,
+        window.location.pathname+"?"+route+"="+encodeURIComponent(value))
+    } else {
+      window.history.pushState("", document.querySelector('title').value,
+        window.location.pathname)
+    }
+  }
+
   // ------------ EVENT LISTENERS ------------
+  // listen to Back button events
+  window.addEventListener('popstate', function(e) {
+    console.log(e)
+    queryVals = {}
+    if (e.state) {
+      queryVals[e.state.route] = e.state.value
+    }
+    console.log(queryVals)
+    route()
+    // e.state is equal to the data-attribute of the last image we clicked
+  });
 
   // sign in/up button
   signinBtn.addEventListener('click', function () {
@@ -1027,7 +1080,7 @@ Connections = (function () {
 
   for (i = 0; i < cancelViews.length; i++) {
     cancelViews[i].addEventListener('click', function () {
-      cancelView()
+      cancelView(true)
     }, false)
   }
 
@@ -1070,7 +1123,7 @@ Connections = (function () {
       'name',
       'status',
       'url',
-      { attr: 'id', name: 'webid', evt: { action: 'click', fn: viewProfile } },
+      { attr: 'id', name: 'webid', evt: { action: 'click', fn: viewAndPush } },
       { attr: 'src', name: 'picture' },
       { attr: 'class', name: 'image' },
       { attr: 'href', name: 'link' },
@@ -1087,9 +1140,22 @@ Connections = (function () {
     showElement(welcome)
     showElement(connections)
 
-    // register App
-    // registerApp(webid)
+    // Set the current user and show the list of friends
+    User = User || {}
     User.webid = webid
+    // save local user
+    saveLocalStorage()
+    // push state
+    pushState('list', User.webid)
+    // show list
+    showList(webid)
+  }
+
+  var showList = function(webid) {
+    // clear list
+    uList.clear()
+    uList = new window.List('connections', listOptions, items)
+
     loadExtendedUser(webid)
     if (uList.visibleItems.length === 0) {
       showElement(welcome)
@@ -1098,6 +1164,15 @@ Connections = (function () {
       showElement(actionsElement)
       uList.sort('name', { order: 'asc' })
     }
+  }
+
+  var resetApp = function() {
+    hideElement(searchElement)
+    hideElement(actionsElement)
+    hideElement(connections)
+    hideElement(start)
+    showElement(status)
+    showElement(signin)
   }
 
   var signUserIn = function () {
@@ -1124,15 +1199,14 @@ Connections = (function () {
   }
 
   var signUserOut = function () {
-    hideElement(searchElement)
-    hideElement(actionsElement)
-    hideElement(connections)
-    hideElement(start)
-    showElement(status)
-    showElement(signin)
-
+    hideElement(welcome)
+    resetApp()
     // clear connections list
     uList.clear()
+    // clear local user
+    clearLocalStorage()
+    // push new state
+    pushState()
   }
 
   // MISC
@@ -1145,6 +1219,70 @@ Connections = (function () {
     }
     return arr[0]
   }
+
+  var ahref = function(uri, alt, classes) {
+    return `<a href="${uri}" alt="${alt}" class="${classes}" target="_blank">${uri}</a>`
+  }
+
+  var saveLocalStorage = function() {
+    var data = {
+      user: User
+    }
+    try {
+      var json = JSON.stringify(data)
+      console.log("Saving", json)
+      window.localStorage.setItem(appUrl, json)
+    } catch(err) {
+      console.log(err)
+    }
+  }
+
+  var loadLocalStorage = function() {
+    try {
+      var data = JSON.parse(window.localStorage.getItem(appUrl))
+      if (data) {
+        User = data.user
+        console.log("Logged user data", User)
+      } else {
+        clearLocalStorage()
+      }
+    } catch(err) {
+      console.log(err)
+    }
+    route()
+  }
+
+  var clearLocalStorage = function() {
+    try {
+       window.localStorage.removeItem(appUrl)
+    } catch(err) {
+      console.log(err)
+    }
+  }
+
+  // ------------ INIT APP ------------
+  var route = function() {
+    if (queryVals['list']) {
+      cancelView()
+      uList.clear()
+      showList(queryVals['list'])
+    } else if (queryVals['view']) {
+      cancelView()
+      viewProfile(queryVals['view'])
+    } else {
+      if (User.webid) {
+        // resetApp()
+        cancelView()
+        showList(User.webid)
+      } else {
+        // resetApp()
+        signUserOut()
+      }
+
+    }
+  }
+  loadLocalStorage()
+
 
   // public methods
   return {
