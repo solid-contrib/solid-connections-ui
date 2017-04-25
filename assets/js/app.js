@@ -247,9 +247,10 @@ Connections = (function () {
         var title = 'New connection'
         var content = User.name + ' has just connected with you!' +
                       ' Click here to connect with this person -- ' + link
-        sendNotification(profile.inbox, title, content)
+        if (profile.inbox) {
+          sendNotification(profile.inbox, title, content)
+        }
         cancelView()
-        deleteElement(card)
         closeModal()
       })
       .catch(function (err) {
