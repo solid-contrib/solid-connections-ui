@@ -7,6 +7,7 @@ Connections = (function () {
   const appContainer = 'connections'
   const appOrigin = document.location.protocol + '//' + document.location.host
   const appUrl = appOrigin + document.location.pathname
+  console.log("App:", appUrl)
 
   // init static elements
   // var signinUrl = document.getElementById('signin-app')
@@ -38,8 +39,8 @@ Connections = (function () {
 
   var SolidClient = window.SolidClient
 
-  var twinqlEndpoint = 'https://databox.me/,query'
-  var proxyEndpoint = 'https://databox.me/,proxy?uri='
+  var twinqlEndpoint = 'https://deiutest.databox.me/,query'
+  var proxyEndpoint = 'https://deiutest.databox.me/,proxy?uri='
 
   // User object
   var User = {}
@@ -109,6 +110,7 @@ Connections = (function () {
       }
       req.open('POST', twinqlEndpoint)
       req.setRequestHeader('Content-Type', 'text/plain')
+      req.setRequestHeader('Authorization', 'Bearer ' + User.authkey)
       req.send(query)
     }).catch(function (err) {
       throw new Error('Something went wrong in the twinql request: ' + err)
@@ -206,6 +208,11 @@ Connections = (function () {
     hideElement(signin)
     profile.friends = []
     window.Friends = profile.knows
+    if (profile.knows.length === 0) {
+      status.innerHTML = ''
+      showElement(start)
+      return
+    }
     profile.knows.filter(function(friend) {
       return !friend['@error'] && friend['foaf:name']
     }).forEach(function (friend) {
@@ -238,7 +245,7 @@ Connections = (function () {
       toAdd.push(st.toNT())
     })
 
-    SolidClient.web.patch(User.webid, toDel, toAdd)
+    SolidClient.web.patch(proxy(User.webid), toDel, toAdd)
       .then(function () {
         // Update the profile object with the new registry without reloading
         addToList(profile, 'name', 'asc', uList, true)
@@ -314,7 +321,7 @@ Connections = (function () {
     g.statementsMatching(me, undefined, undefined).forEach(function (st) {
       toDel.push(st.toNT())
     })
-    SolidClient.web.patch(User.webid, toDel, toAdd).then(function () {
+    SolidClient.web.patch(proxy(User.webid), toDel, toAdd).then(function () {
       var moverlay = document.getElementById('delete-dialog')
       if (moverlay) {
         moverlay.getElementsByClassName('modal-header')[0].innerHTML = ''
@@ -335,8 +342,13 @@ Connections = (function () {
 
       // Remove the connection from the local list
       delete Connections[webid]
-      if (User.webid) {
-        // @@@ Remove user from local data
+      if (User.webid && Connections[User.webid]) {
+        Connections[User.webid].friends = Connections[User.webid].friends.filter(function(friend) {
+          return friend['webid'] !== webid
+        })
+        Connections[User.webid].knows = Connections[User.webid].knows.filter(function(friend) {
+          return friend['@id'] !== webid
+        })
       }
       // Remove the UI element
       uList.remove('webid', webid)
@@ -454,7 +466,7 @@ Connections = (function () {
   }
 
   var proxy = function(uri) {
-    return proxyEndpoint + encodeURIComponent(uri)
+    return proxyEndpoint + encodeURIComponent(uri) + "&key="+encodeURIComponent(User.authkey)
   }
 
   var viewAndPush = function (webid) {
@@ -676,14 +688,17 @@ Connections = (function () {
     parent.appendChild(card)
   }
 
-  var isFriend = function(friend) {
-    if (Connections[User.webid] && Connections[User.webid].knows.find(function(knows) {
-      return knows['@id'] === friend
-      })) {
-      return true
+  var isFriend = function(webid) {
+    if (Connections[User.webid] && Connections[User.webid].friends.find(function(knows) {
+          return knows['webid'] === webid
+        })) {
+        {
+          return true
+      }
     }
     return false
   }
+  window.isFriend = isFriend
 
   var listFriend = function(friend) {
     var friendItem = document.createElement('div')
@@ -1177,15 +1192,17 @@ Connections = (function () {
   }
 
   var signUserIn = function () {
-    SolidClient.login().then(function (webid) {
-      if (!webid || webid.length === 0) {
-        console.log('Could not sign you in. Empty User header returned by server.')
-        addFeedback('error', 'Could not sign you in.')
-      } else {
-        initApp(webid)
-      }
-    })
-    // initApp('https://www.w3.org/People/Berners-Lee/card#i')
+    User.webid = 'https://deiutest.databox.me/profile/card#me'
+    saveLocalStorage()
+    window.location.href = "https://deiutest.databox.me/,account/login?redirect=http://128.30.9.135:8888&origin=http://128.30.9.135:8888"
+    // SolidClient.login().then(function (webid) {
+    //   if (!webid || webid.length === 0) {
+    //     console.log('Could not sign you in. Empty User header returned by server.')
+    //     addFeedback('error', 'Could not sign you in.')
+    //   } else {
+    //     initApp(webid)
+    //   }
+    // })
   }
 
   var signUserUp = function () {
@@ -1226,12 +1243,9 @@ Connections = (function () {
   }
 
   var saveLocalStorage = function() {
-    var data = {
-      user: User
-    }
     try {
-      var json = JSON.stringify(data)
-      console.log("Saving", json)
+      var json = JSON.stringify(User)
+      console.log("Saving user to localStorage: ", json)
       window.localStorage.setItem(appUrl, json)
     } catch(err) {
       console.log(err)
@@ -1240,10 +1254,12 @@ Connections = (function () {
 
   var loadLocalStorage = function() {
     try {
-      var data = JSON.parse(window.localStorage.getItem(appUrl))
-      if (data) {
-        User = data.user
-        console.log("Logged user data", User)
+      var user = JSON.parse(window.localStorage.getItem(appUrl))
+      console.log('Local user', user)
+      if (user) {
+        User = user
+        window.User = User
+        console.log("Loaded user data", User)
       } else {
         clearLocalStorage()
       }
@@ -1255,7 +1271,8 @@ Connections = (function () {
 
   var clearLocalStorage = function() {
     try {
-       window.localStorage.removeItem(appUrl)
+      console.log('Signed user out')
+      window.localStorage.removeItem(appUrl)
     } catch(err) {
       console.log(err)
     }
@@ -1270,6 +1287,14 @@ Connections = (function () {
     } else if (queryVals['view']) {
       cancelView()
       viewProfile(queryVals['view'])
+    } else if (queryVals['key']) {
+      console.log(queryVals['key'])
+      if (User.webid && User.webid.length > 0) {
+        User.authkey = queryVals['key']
+        saveLocalStorage()
+        // pushState('list', User.webid)
+        showList(User.webid)
+      }
     } else {
       if (User.webid) {
         // resetApp()
@@ -1291,6 +1316,7 @@ Connections = (function () {
     addFeedback: addFeedback,
     // registerApp: registerApp,
     initApp: initApp,
-    twinqlQuery: twinqlQuery
+    twinqlQuery: twinqlQuery,
+    signout: signUserOut
   }
 })()
