@@ -249,6 +249,10 @@ Connections = (function () {
       .then(function () {
         // Update the profile object with the new registry without reloading
         addToList(profile, 'name', 'asc', uList, true)
+        // add to my friends
+        if (Connections[User.webid]) {
+          Connections[User.webid].friends.push(profile)
+        }
         // send a notification to the user's inbox
         var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
         var title = 'New connection'
@@ -1292,7 +1296,7 @@ Connections = (function () {
       if (User.webid && User.webid.length > 0) {
         User.authkey = queryVals['key']
         saveLocalStorage()
-        // pushState('list', User.webid)
+        pushState('list', User.webid)
         showList(User.webid)
       }
     } else {
