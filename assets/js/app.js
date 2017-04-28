@@ -1238,8 +1238,10 @@ Connections = (function () {
       req.onload = function (e) {
         // find login URL from Link headers
         var rels = parseLinkHeader(req.getResponseHeader('Link'))
-        console.log(rels)
         loginUrl = rels['https://solid.github.io/vocab/solid-terms.ttl#loginEndpoint']
+        User.proxyEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#proxyEndpoint']
+        User.queryEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#queryEndpoint']
+        saveLocalStorage()
         if (loginUrl && loginUrl.href.length > 0) {
           window.location.href = loginUrl.href+"?redirect="+appUrl+"&origin="+appOrigin
         }
