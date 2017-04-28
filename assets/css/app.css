@@ -125,6 +125,14 @@ html, body {
   font-weight: 200;
 }
 
+.webid-lookup {
+  min-width: 300px;
+  padding: 0 5px;
+  line-height: 2em;
+  border: #4452c0 solid 1px;
+  margin-bottom: 1rem;
+}
+
 .status {
   color: #32b643 !important;
   font-size: 1.1rem;

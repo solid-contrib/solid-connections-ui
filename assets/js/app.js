@@ -36,6 +36,10 @@ Connections = (function () {
   var showNewModal = document.getElementsByClassName('show-new')
   var lookupElement = document.getElementById('lookup')
   var profileInfo = document.getElementById('profile-info')
+  var loginButtons = document.getElementById('login-buttons')
+  var accountURI = document.getElementById('account')
+  var doSigninBtn = document.getElementById('dosignin')
+  var cancelSignInBtn = document.getElementById('cancelsignin')
 
   var SolidClient = window.SolidClient
 
@@ -1071,8 +1075,16 @@ Connections = (function () {
   });
 
   // sign in/up button
-  signinBtn.addEventListener('click', function () {
+  accountURI.addEventListener('keyup', function(e) {
+    if (e.keyCode === 13) {
+      signUserIn()
+    }
+  }, false)
+  doSigninBtn.addEventListener('click', function () {
     signUserIn()
+  }, false)
+  signinBtn.addEventListener('click', function () {
+    prepareSignIn()
   }, false)
 
   signupBtn.addEventListener('click', function () {
@@ -1081,6 +1093,10 @@ Connections = (function () {
 
   signoutBtn.addEventListener('click', function () {
     signUserOut()
+  }, false)
+
+  cancelSignInBtn.addEventListener('click', function () {
+    resetApp()
   }, false)
 
   // search event listener
@@ -1190,23 +1206,46 @@ Connections = (function () {
     hideElement(searchElement)
     hideElement(actionsElement)
     hideElement(connections)
+    hideElement(authorize)
     hideElement(start)
     showElement(status)
     showElement(signin)
+    showElement(loginButtons)
+  }
+
+  var prepareSignIn = function () {
+    hideElement(loginButtons)
+    showElement(authorize)
   }
 
   var signUserIn = function () {
-    User.webid = 'https://deiutest.databox.me/profile/card#me'
-    saveLocalStorage()
-    window.location.href = "https://deiutest.databox.me/,account/login?redirect=http://128.30.9.135:8888&origin=http://128.30.9.135:8888"
-    // SolidClient.login().then(function (webid) {
-    //   if (!webid || webid.length === 0) {
-    //     console.log('Could not sign you in. Empty User header returned by server.')
-    //     addFeedback('error', 'Could not sign you in.')
-    //   } else {
-    //     initApp(webid)
-    //   }
-    // })
+    if (accountURI.value.length > 0) {
+      var url = accountURI.value
+      var req = new window.XMLHttpRequest()
+      if (url.indexOf("http") < 0) {
+        url = 'https://'+url
+      }
+      // define onload behavior
+      req.onload = function (e) {
+        // find login URL from Link headers
+        var rels = parseLinkHeader(req.getResponseHeader('Link'))
+        console.log(rels)
+        loginUrl = rels['https://solid.github.io/vocab/solid-terms.ttl#loginEndpoint']
+        if (loginUrl && loginUrl.href.length > 0) {
+          window.location.href = loginUrl.href+"?redirect="+appUrl+"&origin="+appOrigin
+        }
+      }
+      // define onerror behavior
+      req.onerror = function (e) {
+        var err = {
+          msg: e.statusText,
+          status: e.status
+        }
+        // deal with error
+      }
+      req.open('OPTIONS', url)
+      req.send()
+    }
   }
 
   var signUserUp = function () {
@@ -1232,6 +1271,40 @@ Connections = (function () {
   }
 
   // MISC
+  function unquote(value) {
+    if (value.charAt(0) == '"' && value.charAt(value.length - 1) == '"') {
+        return value.substring(1, value.length - 1);
+    }
+    return value;
+  }
+
+  function parseLinkHeader(header) {
+    var linkexp = /<[^>]*>\s*(\s*;\s*[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*")))*(,|$)/g
+    var paramexp = /[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*"))/g
+
+    var matches = header.match(linkexp)
+    var rels = {}
+    for (var i = 0; i < matches.length; i++) {
+      var split = matches[i].split('>')
+      var href = split[0].substring(1)
+      var ps = split[1]
+      var link = {}
+      link.href = href
+      var s = ps.match(paramexp)
+      for (var j = 0; j < s.length; j++) {
+        var p = s[j]
+        var paramsplit = p.split('=')
+        var name = paramsplit[0]
+        link[name] = unquote(paramsplit[1])
+      }
+
+      if (link.rel !== undefined) {
+        rels[link.rel] = link
+      }
+    }
+
+    return rels;
+  }
   var first = function (arr) {
     if (arr.length === 0) {
       return ''
@@ -1292,9 +1365,11 @@ Connections = (function () {
       cancelView()
       viewProfile(queryVals['view'])
     } else if (queryVals['key']) {
-      console.log(queryVals['key'])
-      if (User.webid && User.webid.length > 0) {
+      console.log(queryVals)
+      if (queryVals['webid']) {
+        User.webid = queryVals['webid']
         User.authkey = queryVals['key']
+
         saveLocalStorage()
         pushState('list', User.webid)
         showList(User.webid)
@@ -1303,12 +1378,13 @@ Connections = (function () {
       if (User.webid) {
         // resetApp()
         cancelView()
+        pushState('list', User.webid)
         showList(User.webid)
       } else {
         // resetApp()
+        pushState()
         signUserOut()
       }
-
     }
   }
   loadLocalStorage()

@@ -106,10 +106,18 @@
         <div>
           <img src="assets/images/logo.png" class="half-width centered img-responsive" />
         </div>
-        <h4 class="">Let's get you connected!</h4>
-        <div id="status-buttons">
+        <div id="login-buttons">
+          <h4 class="">Let's get you connected!</h4>
           <button id="signin-btn" class="btn mr-10">I use Solid</button>
           <button id="signup-btn" class="btn btn-primary">Sign me up</button>
+        </div>
+        <div id="authorize">
+          <h4 class="">Sign in with your WebID account</h4>
+          <input type="text" id="account" name="webid" class="webid-lookup" placeholder="https://..." autocomplete="on">
+          <div>
+            <button id="dosignin" class="btn btn-primary">Sign In</button>
+            <button id="cancelsignin" class="btn">Cancel</button>
+          </div>
         </div>
       </div>
     </section>
