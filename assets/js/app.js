@@ -1398,6 +1398,10 @@ Connections = (function () {
         pushState('list', User.webid)
         showList(User.webid)
       }
+    } else if (queryVals['signout']) {
+      clearLocalStorage()
+      pushState()
+      signUserOut()
     } else {
       if (User.webid) {
         // resetApp()
