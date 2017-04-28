@@ -7,7 +7,6 @@ Connections = (function () {
   const appContainer = 'connections'
   const appOrigin = document.location.protocol + '//' + document.location.host
   const appUrl = appOrigin + document.location.pathname
-  console.log("App:", appUrl)
 
   // init static elements
   // var signinUrl = document.getElementById('signin-app')
@@ -169,7 +168,6 @@ Connections = (function () {
       var display = (callback)?false:true
       listFriends(profile, display)
       if (callback) {
-        console.log("Calling callback...")
         callback()
       }
     }).catch(function (err) {
@@ -239,7 +237,7 @@ Connections = (function () {
     var webid = $rdf.sym(User.webid)
     g.add(
       webid,
-      SolidClient.vocab.foaf('knows'), // @@@
+      SolidClient.vocab.foaf('knows'),
       $rdf.sym(profile.webid)
     )
     var toAdd = []
@@ -323,7 +321,7 @@ Connections = (function () {
     var me = $rdf.sym(User.webid)
     g.add(
       me,
-      SolidClient.vocab.foaf('knows'), // @@@
+      SolidClient.vocab.foaf('knows'),
       $rdf.sym(webid)
     )
     g.statementsMatching(me, undefined, undefined).forEach(function (st) {
@@ -528,7 +526,7 @@ Connections = (function () {
   }
 
   var extendedLook = function (webid, parent) {
-    // hide list of connections
+    // hide list of connections-list
     hideElement(connections)
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
@@ -537,13 +535,17 @@ Connections = (function () {
     image.classList.add('text-center')
     card.appendChild(image)
 
-    console.log('Viewing extended profile for', webid)
     if (!Connections[webid]) {
       showElement(actionsElement)
       extendedInfo.innerHTML = 'Something went wrong.<br>Cannot load profile for' + webid
     }
 
     var profile = Connections[webid]
+
+    // scroll whole page into view
+    window.setTimeout(function () {
+      search.scrollIntoView()
+    }, 0)
 
     // Picture
     if (profile.picture) {
@@ -1085,6 +1087,11 @@ Connections = (function () {
     signUserIn()
   }, false)
   signinBtn.addEventListener('click', function () {
+    window.setTimeout(function () {
+      accountURI.focus()
+      accountURI.scrollIntoView()
+    }, 0)
+    window.accountURI = accountURI
     prepareSignIn()
   }, false)
 
@@ -1324,7 +1331,6 @@ Connections = (function () {
   var saveLocalStorage = function() {
     try {
       var json = JSON.stringify(User)
-      console.log("Saving user to localStorage: ", json)
       window.localStorage.setItem(appUrl, json)
     } catch(err) {
       console.log(err)
@@ -1334,11 +1340,9 @@ Connections = (function () {
   var loadLocalStorage = function() {
     try {
       var user = JSON.parse(window.localStorage.getItem(appUrl))
-      console.log('Local user', user)
       if (user) {
         User = user
         window.User = User
-        console.log("Loaded user data", User)
       } else {
         clearLocalStorage()
       }
@@ -1350,7 +1354,6 @@ Connections = (function () {
 
   var clearLocalStorage = function() {
     try {
-      console.log('Signed user out')
       window.localStorage.removeItem(appUrl)
     } catch(err) {
       console.log(err)
@@ -1368,7 +1371,6 @@ Connections = (function () {
   var loadLastAccount = function () {
     try {
       var acc = JSON.parse(window.localStorage.getItem(appUrl+'#account'))
-      console.log('Last acccount', user)
       if (acc && acc.account) {
         accountURI.value = acc.account
       }
@@ -1387,11 +1389,9 @@ Connections = (function () {
       cancelView()
       viewProfile(queryVals['view'])
     } else if (queryVals['key']) {
-      console.log(queryVals)
       if (queryVals['webid']) {
         User.webid = queryVals['webid']
         User.authkey = queryVals['key']
-
         saveLocalStorage()
         pushState('list', User.webid)
         showList(User.webid)
