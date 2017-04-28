@@ -675,22 +675,23 @@ Connections = (function () {
     var addRemoveIcon = document.createElement('i')
     addRemoveBtn.appendChild(addRemoveIcon)
 
-    if (isFriend(profile.webid)) {
-      // remove option
-      addRemoveIcon.classList.add('fa', 'fa-trash-o')
-      addRemoveBtn.innerHTML += ' Remove connection'
-      addRemoveBtn.addEventListener('click', function () {
-        removeDialog(profile)
-      })
-    } else {
-      // add option
-      addRemoveIcon.classList.add('fa', 'fa-user-plus')
-      addRemoveBtn.innerHTML += ' Add connection'
-      addRemoveBtn.addEventListener('click', function () {
-        addConnection(profile)
-      })
+    if (User && User.webid) {
+      if (isFriend(profile.webid)) {
+        // remove option
+        addRemoveIcon.classList.add('fa', 'fa-trash-o')
+        addRemoveBtn.innerHTML += ' Remove friend'
+        addRemoveBtn.addEventListener('click', function () {
+          removeDialog(profile)
+        })
+      } else {
+        // add option
+        addRemoveIcon.classList.add('fa', 'fa-user-plus')
+        addRemoveBtn.innerHTML += ' Add friend'
+        addRemoveBtn.addEventListener('click', function () {
+          addConnection(profile)
+        })
+      }
     }
-
 
     // finish
     parent.appendChild(card)
@@ -1225,6 +1226,7 @@ Connections = (function () {
       if (url.indexOf("http") < 0) {
         url = 'https://'+url
       }
+      saveLastAccount(url)
       // define onload behavior
       req.onload = function (e) {
         // find login URL from Link headers
@@ -1355,6 +1357,26 @@ Connections = (function () {
     }
   }
 
+  var saveLastAccount = function(acc) {
+    try {
+      var json = JSON.stringify({'account': acc})
+      window.localStorage.setItem(appUrl+'#account', json)
+    } catch(err) {
+      console.log(err)
+    }
+  }
+  var loadLastAccount = function () {
+    try {
+      var acc = JSON.parse(window.localStorage.getItem(appUrl+'#account'))
+      console.log('Last acccount', user)
+      if (acc && acc.account) {
+        accountURI.value = acc.account
+      }
+    } catch(err) {
+      console.log(err)
+    }
+  }
+
   // ------------ INIT APP ------------
   var route = function() {
     if (queryVals['list']) {
@@ -1388,6 +1410,7 @@ Connections = (function () {
     }
   }
   loadLocalStorage()
+  loadLastAccount()
 
 
   // public methods
