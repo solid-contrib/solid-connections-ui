@@ -216,7 +216,7 @@ Connections = (function () {
       return
     }
     profile.knows.filter(function(friend) {
-      return !friend['@error'] && friend['foaf:name']
+      return !friend['@error'] && friend['foaf:name'] && friend['@id'].indexOf('http') >= 0
     }).forEach(function (friend) {
       var item = loadProfile(friend)
       profile.friends.push(item)
