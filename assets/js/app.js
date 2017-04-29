@@ -47,6 +47,7 @@ Connections = (function () {
 
   // User object
   var User = {}
+
   // Map of connections
   var Connections = {}
 
@@ -731,7 +732,7 @@ Connections = (function () {
     var wt = document.createElement('div')
     uc.appendChild(wt)
     wt.classList.add('webid', 'tooltip')
-    wt.setAttribute('data-tooltip', 'Connect with this person')
+    wt.setAttribute('data-tooltip', 'View person details')
     wt.id = friend.webid
     wt.addEventListener('click', function () {
       // push new state to the URL bar
@@ -1235,9 +1236,13 @@ Connections = (function () {
     showElement(authorize)
   }
 
-  var signUserIn = function () {
-    if (accountURI.value.length > 0) {
-      var url = accountURI.value
+  var signUserIn = function (webid) {
+    if (!webid && accountURI.value.length > 0) {
+      webid = accountURI.value
+    }
+
+    if (webid) {
+      var url = webid
       var req = new window.XMLHttpRequest()
       if (url.indexOf("http") < 0) {
         url = 'https://'+url
@@ -1274,7 +1279,7 @@ Connections = (function () {
         console.log('Could not sign you in. Empty User header returned by server.')
         addFeedback('error', 'Could not sign you in.')
       } else {
-        initApp(webid)
+        signUserIn(webid)
       }
     })
   }
