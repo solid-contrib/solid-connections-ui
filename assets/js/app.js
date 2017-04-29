@@ -166,6 +166,10 @@ Connections = (function () {
     loadUser(query).then(function (profile) {
       // Add to list of connections
       Connections[profile.webid] = profile
+      if (User.webid === profile.webid) {
+        User.profile = profile
+        saveLocalStorage()
+      }
       var display = (callback)?false:true
       listFriends(profile, display)
       if (callback) {
@@ -259,7 +263,7 @@ Connections = (function () {
         }
         // send a notification to the user's inbox
         var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
-        var title = 'New connection'
+        var title = 'New friend'
         var content = User.name + ' has just connected with you!' +
                       ' Click here to connect with this person -- ' + link
         if (profile.inbox) {
@@ -309,7 +313,7 @@ Connections = (function () {
     // clear the info profile
     profileInfo.innerHTML = ''
     if (verbose) {
-      addFeedback('success', 'You have a new connection!')
+      addFeedback('success', 'You have a new friend!')
     }
     toList.sort(sort, { order: order })
   }
@@ -341,7 +345,7 @@ Connections = (function () {
               <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
             </g>
           </svg>
-          <h6 class="green">Connection removed!</h6>
+          <h6 class="green">Friend removed!</h6>
         </div>`
         window.setTimeout(function () {
           moverlay.parentNode.removeChild(moverlay)
@@ -367,7 +371,7 @@ Connections = (function () {
     })
     .catch(function (err) {
       console.log(err)
-      addFeedback('error', 'Could not remove connection from server')
+      addFeedback('error', 'Could not remove friend from your profile. Server error.')
     })
   }
 
@@ -512,7 +516,6 @@ Connections = (function () {
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
     if (uList.visibleItems.length === 0) {
-      hideElement(searchElement)
       hideElement(actionsElement)
       showElement(welcome)
     } else {
@@ -972,12 +975,12 @@ Connections = (function () {
     var title = document.createElement('div')
     header.appendChild(title)
     title.classList.add('modal-title')
-    title.innerHTML = 'Remove Connection'
+    title.innerHTML = 'Remove Friend'
 
     body = document.createElement('div')
     container.appendChild(body)
     body.classList.add('modal-body')
-    body.innerHTML = '<h4 class"text-center">Are you sure you want to remove this connection?</h4>'
+    body.innerHTML = '<h4 class"text-center">Are you sure you want to remove this friend?</h4>'
 
     var footer = document.createElement('div')
     container.appendChild(footer)
@@ -1351,6 +1354,9 @@ Connections = (function () {
       if (user) {
         User = user
         window.User = User
+        if (User.profile) {
+          Connections[User.webid] = User.profile
+        }
       } else {
         clearLocalStorage()
       }
@@ -1396,14 +1402,12 @@ Connections = (function () {
     } else if (queryVals['view']) {
       cancelView()
       viewProfile(queryVals['view'])
-    } else if (queryVals['key']) {
-      if (queryVals['webid']) {
-        User.webid = queryVals['webid']
-        User.authkey = queryVals['key']
-        saveLocalStorage()
-        pushState('list', User.webid)
-        showList(User.webid)
-      }
+    } else if (queryVals['key'] && queryVals['webid']) {
+      User.webid = queryVals['webid']
+      User.authkey = queryVals['key']
+      saveLocalStorage()
+      pushState('list', User.webid)
+      showList(User.webid)
     } else if (queryVals['signout']) {
       clearLocalStorage()
       pushState()
