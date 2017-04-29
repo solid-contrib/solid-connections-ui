@@ -214,6 +214,7 @@ Connections = (function () {
     if (profile.knows.length === 0) {
       status.innerHTML = ''
       showElement(start)
+      showElement(searchElement)
       return
     }
     profile.knows.filter(function(friend) {
