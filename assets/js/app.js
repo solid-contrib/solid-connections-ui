@@ -1206,6 +1206,8 @@ Connections = (function () {
   }
 
   var showList = function(webid) {
+    hideElement(signin)
+
     // clear list
     uList.clear()
     uList = new window.List('connections', listOptions, items)
