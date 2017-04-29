@@ -42,8 +42,8 @@ Connections = (function () {
 
   var SolidClient = window.SolidClient
 
-  var twinqlEndpoint = 'https://deiutest.databox.me/,query'
-  var proxyEndpoint = 'https://deiutest.databox.me/,proxy?uri='
+  var twinqlEndpoint = 'https://databox.me/,query'
+  var proxyEndpoint = 'https://databox.me/,proxy?uri='
 
   // User object
   var User = {}
@@ -111,8 +111,9 @@ Connections = (function () {
         }
         return reject(err)
       }
-      req.open('POST', twinqlEndpoint)
-      req.setRequestHeader('Content-Type', 'text/plain')
+      var endpoint = (User.queryEndpoint) ? User.queryEndpoint : queryEndpoint
+      req.open('POST', endpoint)
+      req.setRequestHeader('Content-Type', 'text/tql')
       req.setRequestHeader('Authorization', 'Bearer ' + User.authkey)
       req.send(query)
     }).catch(function (err) {
@@ -472,7 +473,11 @@ Connections = (function () {
   }
 
   var proxy = function(uri) {
-    return proxyEndpoint + encodeURIComponent(uri) + "&key="+encodeURIComponent(User.authkey)
+    var endpoint = proxyEndpoint
+    if (User.proxyEndpoint) {
+      endpoint = User.proxyEndpoint
+    }
+    return endpoint + encodeURIComponent(uri) + "&key="+encodeURIComponent(User.authkey)
   }
 
   var viewAndPush = function (webid) {
@@ -1239,8 +1244,8 @@ Connections = (function () {
         // find login URL from Link headers
         var rels = parseLinkHeader(req.getResponseHeader('Link'))
         loginUrl = rels['https://solid.github.io/vocab/solid-terms.ttl#loginEndpoint']
-        User.proxyEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#proxyEndpoint']
-        User.queryEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#queryEndpoint']
+        User.proxyEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#proxyEndpoint'].href
+        User.queryEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#twinqlEndpoint'].href
         saveLocalStorage()
         if (loginUrl && loginUrl.href.length > 0) {
           window.location.href = loginUrl.href+"?redirect="+appUrl+"&origin="+appOrigin
