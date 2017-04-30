@@ -215,8 +215,7 @@ Connections = (function () {
   var listFriends = function (profile, display) {
     hideElement(signin)
     profile.friends = []
-    window.Friends = profile.knows
-    if (profile.knows.length === 0) {
+    if (!profile.knows || profile.knows.length === 0) {
       status.innerHTML = ''
       showElement(start)
       showElement(searchElement)
