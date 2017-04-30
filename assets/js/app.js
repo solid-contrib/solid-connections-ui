@@ -305,8 +305,13 @@ Connections = (function () {
       item.email = profile.email
     }
     item.status = profile.status || 'invitation sent'
-    // Add to UI
+    // Add to UI list
+    if (toList.get('webid', item.webid).length > 0) {
+      // avoid adding the same person twice
+      toList.remove('webid', item.webid)
+    }
     toList.add(item)
+    //
     hideElement(welcome)
     showElement(searchElement)
     showElement(actionsElement)
@@ -494,6 +499,9 @@ Connections = (function () {
   var viewProfile = function (webid) {
     user.classList.remove('slide-out')
     user.classList.add('slide-in')
+
+    connections.classList.remove('fade-in')
+    connections.classList.add('fade-out')
     hideElement(actionsElement)
 
     extendedInfo.innerHTML = newStatus('Loading profile data...')
@@ -515,12 +523,15 @@ Connections = (function () {
     status.innerHTML = ''
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
+
     if (uList.visibleItems.length === 0) {
       hideElement(actionsElement)
       showElement(welcome)
     } else {
       showElement(actionsElement)
       showElement(connections)
+      connections.classList.add('fade-in')
+      connections.classList.remove('fade-out')
     }
 
     if (changeState) {
@@ -1192,6 +1203,9 @@ Connections = (function () {
     hideElement(signin)
     showElement(welcome)
     showElement(connections)
+    connections.classList.add('fade-in')
+    connections.classList.remove('fade-out')
+
 
     // Set the current user and show the list of friends
     User = User || {}
@@ -1210,6 +1224,7 @@ Connections = (function () {
     // clear list
     uList.clear()
     uList = new window.List('connections', listOptions, items)
+    window.uList = uList
 
     loadExtendedUser(webid)
     if (uList.visibleItems.length === 0) {
