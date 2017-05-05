@@ -2123,6 +2123,7 @@ textarea.form-input {
 }
 .circle {
   border-radius: 50%;
+  border: solid 4px #fff;
 }
 .divider {
   border-bottom: .1rem solid #efefef;

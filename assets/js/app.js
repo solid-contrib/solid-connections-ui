@@ -5,7 +5,7 @@ Connections = (function () {
 
   // constants
   const appContainer = 'connections'
-  const appOrigin = document.location.protocol + '//' + document.location.host
+  const appOrigin = document.origin
   const appUrl = appOrigin + document.location.pathname
 
   // init static elements
@@ -151,11 +151,13 @@ Connections = (function () {
       foaf:nick
       foaf:img
       foaf:depiction
+      ui:backgroundImage
       [ foaf:mbox ]
       [ foaf:homepage ]
       solid:inbox`
     var query = `@prefix foaf http://xmlns.com/foaf/0.1/
       @prefix solid http://www.w3.org/ns/solid/terms#
+      @prefix ui http://www.w3.org/ns/ui#
 
       ${webid} {
         ${profileTemplate}
@@ -167,10 +169,6 @@ Connections = (function () {
     loadUser(query).then(function (profile) {
       // Add to list of connections
       Connections[profile.webid] = profile
-      if (User.webid === profile.webid) {
-        User.profile = profile
-        saveLocalStorage()
-      }
       var display = (callback)?false:true
       listFriends(profile, display)
       if (callback) {
@@ -262,11 +260,12 @@ Connections = (function () {
           Connections[User.webid].friends.push(profile)
         }
         // send a notification to the user's inbox
-        var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
-        var title = 'New friend'
-        var content = User.name + ' has just connected with you!' +
+        if (profile.inbox && profile.inbox.length > 0) {
+          console.log('Sending notification to inbox', profile.inbox)
+          var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
+          var title = 'New friend'
+          var content = User.name + ' has just connected with you!' +
                       ' Click here to connect with this person -- ' + link
-        if (profile.inbox) {
           sendNotification(profile.inbox, title, content)
         }
         cancelView()
@@ -413,11 +412,13 @@ Connections = (function () {
       foaf:familyName
       foaf:nick
       foaf:img
+      ui:backgroundImage
       [ foaf:mbox ]
       [ foaf:homepage ]
       solid:inbox`
     var query = `@prefix foaf http://xmlns.com/foaf/0.1/
       @prefix solid http://www.w3.org/ns/solid/terms#
+      @prefix ui http://www.w3.org/ns/ui#
 
       ${webid} {
         ${profileTemplate}
@@ -456,15 +457,19 @@ Connections = (function () {
     profile.webid = data['@id']
     profile.knows = data['foaf:knows']||[]
     if (data['foaf:img']) {
-      profile.picture = proxy(data['foaf:img'])
+      profile.picture = (data['foaf:img'].indexOf('http') != 0)?data['foaf:img']:proxy(data['foaf:img'])
     } else if (data['foaf:depiction']) {
-      profile.picture = proxy(data['foaf:depiction'])
+      profile.picture = (data['foaf:depiction'].indexOf('http') != 0)?data['foaf:depiction']:proxy(data['foaf:depiction'])
     } else {
       profile.picture = 'assets/images/avatar.png'
     }
-    var name = data['foaf:name']||""
-    var fn = data['foaf:familyName']||""
-    var gn = data['foaf:givenName']||""
+    profile.background = ''
+    if (data['ui:backgroundImage']) {
+      profile.background = proxy(data['ui:backgroundImage'])
+    }
+    var name = data['foaf:name']||''
+    var fn = data['foaf:familyName']||''
+    var gn = data['foaf:givenName']||''
     if (name.length > 0) {
       profile.name = name
     } else {
@@ -478,7 +483,7 @@ Connections = (function () {
     }
     profile.emails = data['foaf:mbox']||[]
     profile.homepages = data['foaf:homepage']||[]
-    profile.inbox =proxy(data['solid:inbox'])||""
+    profile.inbox = (data['solid:inbox'])?proxy(data['solid:inbox']):''
     return profile
   }
 
@@ -551,21 +556,30 @@ Connections = (function () {
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
-    var image = document.createElement('div')
-    image.classList.add('text-center')
-    card.appendChild(image)
-
     if (!Connections[webid]) {
       showElement(actionsElement)
       extendedInfo.innerHTML = 'Something went wrong.<br>Cannot load profile for' + webid
     }
 
     var profile = Connections[webid]
+    console.log('Viewing profile', profile)
 
     // scroll whole page into view
     window.setTimeout(function () {
       search.scrollIntoView()
     }, 0)
+
+    var image = document.createElement('div')
+    image.classList.add('text-center')
+    card.appendChild(image)
+
+    // Background picture
+    if (profile.background) {
+      var bg = document.createElement('div')
+      image.appendChild(bg)
+      bg.classList.add('bg-pic')
+      bg.style.backgroundImage = 'url('+profile.background+')'
+    }
 
     // Picture
     if (profile.picture) {
@@ -680,8 +694,6 @@ Connections = (function () {
         body.appendChild(div)
       }
     })
-
-
 
     // Actions
     var footer = document.createElement('div')
@@ -1206,12 +1218,11 @@ Connections = (function () {
     connections.classList.add('fade-in')
     connections.classList.remove('fade-out')
 
-
     // Set the current user and show the list of friends
     User = User || {}
     User.webid = webid
     // save local user
-    saveLocalStorage()
+    saveLocalStorage(User)
     // push state
     pushState('list', User.webid)
     // show list
@@ -1258,12 +1269,12 @@ Connections = (function () {
     }
 
     if (webid) {
+      console.log('Webid:', webid)
       var url = webid
       var req = new window.XMLHttpRequest()
       if (url.indexOf("http") < 0) {
         url = 'https://'+url
       }
-      saveLastAccount(url)
       // define onload behavior
       req.onload = function (e) {
         // find login URL from Link headers
@@ -1271,7 +1282,8 @@ Connections = (function () {
         loginUrl = rels['https://solid.github.io/vocab/solid-terms.ttl#loginEndpoint']
         User.proxyEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#proxyEndpoint'].href
         User.queryEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#twinqlEndpoint'].href
-        saveLocalStorage()
+        saveLocalStorage(User)
+        saveLastAccount(url)
         if (loginUrl && loginUrl.href.length > 0) {
           window.location.href = loginUrl.href+"?redirect="+appUrl+"&origin="+appOrigin
         }
@@ -1360,9 +1372,9 @@ Connections = (function () {
     return `<a href="${uri}" alt="${alt}" class="${classes}" target="_blank">${uri}</a>`
   }
 
-  var saveLocalStorage = function() {
+  var saveLocalStorage = function(data) {
     try {
-      var json = JSON.stringify(User)
+      var json = JSON.stringify(data)
       window.localStorage.setItem(appUrl, json)
     } catch(err) {
       console.log(err)
@@ -1398,6 +1410,7 @@ Connections = (function () {
   var saveLastAccount = function(acc) {
     try {
       var json = JSON.stringify({'account': acc})
+      console.log('saving last used account:',appUrl+'#account')
       window.localStorage.setItem(appUrl+'#account', json)
     } catch(err) {
       console.log(err)
@@ -1426,7 +1439,7 @@ Connections = (function () {
     } else if (queryVals['key'] && queryVals['webid']) {
       User.webid = queryVals['webid']
       User.authkey = queryVals['key']
-      saveLocalStorage()
+      saveLocalStorage(User)
       pushState('list', User.webid)
       showList(User.webid)
     } else if (queryVals['signout']) {

@@ -50,6 +50,17 @@ html, body {
   font-size: 1rem;
 }
 
+.bg-pic {
+  background-size: 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+  width: 100%;
+  height: 100%;
+}
+
+.circle {
+  border: solid 4px #fff;
+}
 
 .form-input {
   padding: 2rem 1rem;
