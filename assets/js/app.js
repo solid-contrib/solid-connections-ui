@@ -248,7 +248,8 @@ Connections = (function () {
     var toDel = null
     profile.graph = g.statementsMatching(webid, undefined, undefined)
     profile.graph.forEach(function (st) {
-      toAdd.push(st.toNT())
+      console.log("Pushing statement", st.toNT())
+      toAdd.push(st.toNT() + ' .') // remove this once Solid.js is fixed
     })
 
     SolidClient.web.patch(proxy(User.webid), toDel, toAdd)
@@ -335,7 +336,7 @@ Connections = (function () {
       $rdf.sym(webid)
     )
     g.statementsMatching(me, undefined, undefined).forEach(function (st) {
-      toDel.push(st.toNT())
+      toDel.push(st.toNT() + ' .')
     })
     SolidClient.web.patch(proxy(User.webid), toDel, toAdd).then(function () {
       var moverlay = document.getElementById('delete-dialog')
