@@ -1286,7 +1286,7 @@ Connections = (function () {
         saveLocalStorage(User)
         saveLastAccount(url)
         if (loginUrl && loginUrl.href.length > 0) {
-          window.location.href = loginUrl.href+"?redirect="+appUrl+"&origin="+appOrigin
+          window.location.href = loginUrl.href+"?redirect="+encodeURIComponent(appUrl)+"&origin="+encodeURIComponent(appOrigin)
         }
       }
       // define onerror behavior
