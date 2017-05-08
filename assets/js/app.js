@@ -5,8 +5,8 @@ Connections = (function () {
 
   // constants
   const appContainer = 'connections'
-  const appOrigin = document.origin
-  const appUrl = appOrigin + document.location.pathname
+  const appOrigin = window.location.origin
+  const appUrl = appOrigin + window.location.pathname
 
   // init static elements
   // var signinUrl = document.getElementById('signin-app')
