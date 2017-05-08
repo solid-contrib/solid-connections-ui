@@ -396,6 +396,20 @@ Connections = (function () {
     )
   }
 
+  var getAtId = function(arr) {
+    if (!arr) {
+      return []
+    }
+    if (arr.length === 0) {
+      return arr
+    }
+    var ret = []
+    arr.forEach(function (id) {
+      ret.push(id['@id'])
+    })
+    return ret
+  }
+
   // Fetch a WebID profile using twinql
   var findWebID = function () {
     var webid = document.getElementById('webid').value
@@ -458,15 +472,17 @@ Connections = (function () {
     profile.webid = data['@id']
     profile.knows = data['foaf:knows']||[]
     if (data['foaf:img']) {
-      profile.picture = (data['foaf:img'].indexOf('http') != 0)?data['foaf:img']:proxy(data['foaf:img'])
+      var img = data['foaf:img']['@id']
+      profile.picture = (img.indexOf('http') >= 0)?proxy(img):img
     } else if (data['foaf:depiction']) {
-      profile.picture = (data['foaf:depiction'].indexOf('http') != 0)?data['foaf:depiction']:proxy(data['foaf:depiction'])
+      var img = data['foaf:depiction']['@id']
+      profile.picture = (img.indexOf('http') >= 0)?proxy(img):img
     } else {
       profile.picture = 'assets/images/avatar.png'
     }
     profile.background = ''
     if (data['ui:backgroundImage']) {
-      profile.background = proxy(data['ui:backgroundImage'])
+      profile.background = proxy(data['ui:backgroundImage']['@id'])
     }
     var name = data['foaf:name']||''
     var fn = data['foaf:familyName']||''
@@ -482,9 +498,9 @@ Connections = (function () {
         profile.name += ' ' + fn
       }
     }
-    profile.emails = data['foaf:mbox']||[]
-    profile.homepages = data['foaf:homepage']||[]
-    profile.inbox = (data['solid:inbox'])?proxy(data['solid:inbox']):''
+    profile.emails = getAtId(data['foaf:mbox'])||[]
+    profile.homepages = getAtId(data['foaf:homepage'])||[]
+    profile.inbox = (data['solid:inbox'])?proxy(data['solid:inbox']['@id']):''
     return profile
   }
 
@@ -1276,6 +1292,7 @@ Connections = (function () {
       if (url.indexOf("http") < 0) {
         url = 'https://'+url
       }
+
       // define onload behavior
       req.onload = function (e) {
         // find login URL from Link headers
@@ -1286,7 +1303,9 @@ Connections = (function () {
         saveLocalStorage(User)
         saveLastAccount(url)
         if (loginUrl && loginUrl.href.length > 0) {
-          window.location.href = loginUrl.href+"?redirect="+encodeURIComponent(appUrl)+"&origin="+encodeURIComponent(appOrigin)
+          var redirTo = loginUrl.href+"?redirect="+encodeURIComponent(appUrl)+"&origin="+encodeURIComponent(appOrigin)
+          console.log('Redir to:', redirTo)
+          window.location.href = redirTo
         }
       }
       // define onerror behavior
@@ -1325,14 +1344,14 @@ Connections = (function () {
   }
 
   // MISC
-  function unquote(value) {
+  function unquote (value) {
     if (value.charAt(0) == '"' && value.charAt(value.length - 1) == '"') {
         return value.substring(1, value.length - 1);
     }
     return value;
   }
 
-  function parseLinkHeader(header) {
+  var parseLinkHeader = function (header) {
     var linkexp = /<[^>]*>\s*(\s*;\s*[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*")))*(,|$)/g
     var paramexp = /[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*"))/g
 
@@ -1359,6 +1378,7 @@ Connections = (function () {
 
     return rels;
   }
+
   var first = function (arr) {
     if (arr.length === 0) {
       return ''
