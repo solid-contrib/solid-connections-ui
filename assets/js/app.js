@@ -519,6 +519,7 @@ Connections = (function () {
   }
 
   var viewProfile = function (webid) {
+    showElement(user)
     user.classList.remove('slide-out')
     user.classList.add('slide-in')
 
@@ -545,6 +546,7 @@ Connections = (function () {
     status.innerHTML = ''
     user.classList.remove('slide-in')
     user.classList.add('slide-out')
+    hideElement(user)
 
     if (uList.visibleItems.length === 0) {
       hideElement(actionsElement)
@@ -1229,6 +1231,7 @@ Connections = (function () {
 
   // INIT APP
   var initApp = function (webid) {
+    hideElement(user)
     hideElement(signin)
     showElement(welcome)
     showElement(connections)
