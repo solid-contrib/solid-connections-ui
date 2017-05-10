@@ -1303,9 +1303,9 @@ Connections = (function () {
       req.onload = function (e) {
         // find login URL from Link headers
         var rels = parseLinkHeader(req.getResponseHeader('Link'))
-        loginUrl = rels['https://solid.github.io/vocab/solid-terms.ttl#loginEndpoint']
-        User.proxyEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#proxyEndpoint'].href
-        User.queryEndpoint = rels['https://solid.github.io/vocab/solid-terms.ttl#twinqlEndpoint'].href
+        loginUrl = rels['http://solid.github.io/vocab/solid-terms.ttl#loginEndpoint']
+        User.proxyEndpoint = rels['http://solid.github.io/vocab/solid-terms.ttl#proxyEndpoint'].href
+        User.queryEndpoint = rels['http://solid.github.io/vocab/solid-terms.ttl#twinqlEndpoint'].href
         saveLocalStorage(User)
         saveLastAccount(url)
         if (loginUrl && loginUrl.href.length > 0) {
