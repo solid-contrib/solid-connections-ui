@@ -28,7 +28,7 @@
                     <form lpformnum="1">
                         <div class="form-group">
                             <label class="form-label" for="webid">Use their Solid account?</label>
-                            <input id="webid" class="form-input" type="text" placeholder="https://..." value="https://deiu.me/profile#me">
+                            <input id="webid" class="form-input" type="url" placeholder="https://..." value="https://deiu.me/profile#me">
                         </div>
                         <div class="form-group hidden">
                             <label class="form-label" for="email">Use their email?</label>
@@ -113,7 +113,7 @@
         </div>
         <div id="authorize" class="hidden">
           <h4 class="">Sign in with your WebID account</h4>
-          <input type="text" id="account" name="webid" class="webid-lookup" placeholder="https://..." autocomplete="on">
+          <input type="url" id="account" name="webid" class="webid-lookup" placeholder="https://..." autocomplete="on">
           <div>
             <button id="dosignin" class="btn btn-primary">Sign In</button>
             <button id="cancelsignin" class="btn">Cancel</button>
