@@ -401,11 +401,13 @@ Connections = (function () {
       return []
     }
     if (arr.length === 0) {
-      return arr
+      return []
     }
     var ret = []
     arr.forEach(function (id) {
-      ret.push(id['@id'])
+      if (id['@id']) {
+        ret.push(id['@id'])
+      }
     })
     return ret
   }
@@ -647,6 +649,7 @@ Connections = (function () {
     body.appendChild(section)
 
     if (profile.emails && profile.emails.length > 0) {
+      console.log(profile.emails)
       profile.emails.forEach(function (addr) {
         addr = cleanMail(addr)
         div = document.createElement('div')
@@ -938,7 +941,7 @@ Connections = (function () {
   }
 
   var cleanMail = function(addr) {
-    if (addr.indexOf('mailto:') >= 0) {
+    if (addr && addr.length > 0 && addr.indexOf('mailto:') >= 0) {
       addr = addr.slice(7, addr.length)
     }
     return addr
