@@ -396,7 +396,7 @@ Connections = (function () {
     )
   }
 
-  var getAtId = function(arr) {
+  var getId = function(arr) {
     if (!arr) {
       return []
     }
@@ -410,6 +410,16 @@ Connections = (function () {
       }
     })
     return ret
+  }
+
+  var getValue = function(item) {
+    if (!item || item.length === 0) {
+      return ""
+    }
+    if (item['@value'] && item['@value'].length > 0) {
+      return item['@value']
+    }
+    return item
   }
 
   // Fetch a WebID profile using twinql
@@ -486,9 +496,9 @@ Connections = (function () {
     if (data['ui:backgroundImage']) {
       profile.background = proxy(data['ui:backgroundImage']['@id'])
     }
-    var name = data['foaf:name']||''
-    var fn = data['foaf:familyName']||''
-    var gn = data['foaf:givenName']||''
+    var name = getValue(data['foaf:name'])
+    var fn = getValue(data['foaf:familyName'])
+    var gn = getValue(data['foaf:givenName'])
     if (name.length > 0) {
       profile.name = name
     } else {
@@ -500,8 +510,8 @@ Connections = (function () {
         profile.name += ' ' + fn
       }
     }
-    profile.emails = getAtId(data['foaf:mbox'])||[]
-    profile.homepages = getAtId(data['foaf:homepage'])||[]
+    profile.emails = getId(data['foaf:mbox'])||[]
+    profile.homepages = getId(data['foaf:homepage'])||[]
     profile.inbox = (data['solid:inbox'])?proxy(data['solid:inbox']['@id']):''
     return profile
   }
