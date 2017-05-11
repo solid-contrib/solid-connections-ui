@@ -196,6 +196,10 @@ html, body {
   justify-content: center;
 }
 
+.center-text {
+  text-align: center;
+}
+
 .stretch {
   flex: 1;
 }
@@ -222,8 +226,16 @@ html, body {
   color: red;
 }
 
+.green {
+  color: green;
+}
+
 .p-10 {
   padding: 1rem;
+}
+
+.p-l-10 {
+  padding-left: 1rem;
 }
 
 .no-h-top {
@@ -403,6 +415,11 @@ html, body {
 }
 
 /* styles for truncate '...' */
+.trunc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .truncate {
   overflow: hidden;
   position: relative;

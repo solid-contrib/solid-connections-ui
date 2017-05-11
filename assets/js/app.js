@@ -143,7 +143,7 @@ Connections = (function () {
       // deal with the exception
       return
     }
-    status.innerHTML = newStatus('Loading profile data and social graph...')
+    status.innerHTML = newStatus('Loading social graph...')
     var profileTemplate = `
       foaf:name
       foaf:givenName
@@ -226,6 +226,8 @@ Connections = (function () {
       profile.friends.push(item)
       Connections[item.webid] = item
       if (display) {
+        showElement(searchElement)
+        showElement(actionsElement)
         addToList(item, 'name', 'asc', uList, false)
       }
     })
@@ -235,46 +237,72 @@ Connections = (function () {
   // Add a new connection to the index document
   // @param profile {object} Contains fields contained in the index document
   // @param isPublic {bool} If true, add the connection to the public index instead
-  var addConnection = function (profile, isPublic) {
+  var addConnection = function (profile, goBack) {
     // var indexType = (isPublic) ?
-    var g = $rdf.graph()
-    var webid = $rdf.sym(User.webid)
-    g.add(
-      webid,
-      SolidClient.vocab.foaf('knows'),
-      $rdf.sym(profile.webid)
-    )
-    var toAdd = []
-    var toDel = null
-    profile.graph = g.statementsMatching(webid, undefined, undefined)
-    profile.graph.forEach(function (st) {
-      console.log("Pushing statement", st.toNT())
-      toAdd.push(st.toNT() + ' .') // remove this once Solid.js is fixed
-    })
-
-    SolidClient.web.patch(proxy(User.webid), toDel, toAdd)
-      .then(function () {
-        // Update the profile object with the new registry without reloading
-        addToList(profile, 'name', 'asc', uList, true)
-        // add to my friends
-        if (Connections[User.webid]) {
-          Connections[User.webid].friends.push(profile)
-        }
-        // send a notification to the user's inbox
-        if (profile.inbox && profile.inbox.length > 0) {
-          console.log('Sending notification to inbox', profile.inbox)
-          var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
-          var title = 'New friend'
-          var content = User.name + ' has just connected with you!' +
-                      ' Click here to connect with this person -- ' + link
-          sendNotification(profile.inbox, title, content)
-        }
-        cancelView()
-        closeModal()
+    return new Promise(function(resolve, reject) {
+      var g = $rdf.graph()
+      var webid = $rdf.sym(User.webid)
+      g.add(
+        webid,
+        SolidClient.vocab.foaf('knows'),
+        $rdf.sym(profile.webid)
+      )
+      var toAdd = []
+      var toDel = null
+      profile.graph = g.statementsMatching(webid, undefined, undefined)
+      profile.graph.forEach(function (st) {
+        toAdd.push(st.toNT() + ' .') // remove this once Solid.js is fixed
       })
-      .catch(function (err) {
-        console.log('Error saving new contact:' + err)
-        addFeedback('error', 'Error saving new contact')
+
+      SolidClient.web.patch(proxy(User.webid), toDel, toAdd)
+        .then(function () {
+          // Update the profile object with the new registry without reloading
+          addToList(profile, 'name', 'asc', uList, false)
+          // add to my friends
+          if (Connections[User.webid]) {
+            Connections[User.webid].friends.push(profile)
+          }
+          // send a notification to the user's inbox
+          if (profile.inbox && profile.inbox.length > 0) {
+            console.log('Sending notification to inbox', profile.inbox)
+            var link = appUrl + '?referrer=' + encodeURIComponent(User.webid)
+            var title = 'New friend'
+            var content = User.name + ' has just connected with you!' +
+                        ' Click here to connect with this person -- ' + link
+            sendNotification(profile.inbox, title, content)
+          }
+          // show success sign
+          var body = document.getElementsByTagName('body')[0]
+          var moverlay = document.createElement('div')
+          body.appendChild(moverlay)
+          moverlay.classList.add('modal-overlay', 'flex', 'center-page')
+          var modal = document.createElement('div')
+          moverlay.appendChild(modal)
+          modal.classList.add('modal-temp', 'modal-sm')
+          var container = document.createElement('div')
+          modal.appendChild(container)
+          container.classList.add('modal-container')
+          container.setAttribute('role', 'document')
+
+          mbody = document.createElement('div')
+          container.appendChild(mbody)
+          mbody.classList.add('modal-body')
+          mbody.innerHTML = successCheckMark("Friend added!")
+          window.setTimeout(function () {
+            moverlay.parentNode.removeChild(moverlay)
+          }, 1000)
+
+          if (goBack) {
+            cancelView()
+            closeModal()
+          }
+          return resolve()
+        })
+        .catch(function (err) {
+          console.log('Error saving new contact:' + err)
+          addFeedback('error', 'Error saving new contact')
+          return reject(err)
+        })
       })
   }
 
@@ -313,18 +341,30 @@ Connections = (function () {
     toList.add(item)
     //
     hideElement(welcome)
-    showElement(searchElement)
-    showElement(actionsElement)
     // clear the info profile
     profileInfo.innerHTML = ''
     if (verbose) {
+      showElement(searchElement)
+      showElement(actionsElement)
       addFeedback('success', 'You have a new friend!')
     }
     toList.sort(sort, { order: order })
   }
 
+  var successCheckMark = function(msg) {
+    return `<div class="icon-success svg text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="72px" height="72px">
+            <g fill="none" stroke="#43C47A" stroke-width="2">
+              <circle cx="36" cy="36" r="35" style="stroke-dasharray:240px, 240px; stroke-dashoffset: 480px;"></circle>
+              <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
+            </g>
+          </svg>
+          <h6 class="green">${msg}</h6>
+        </div>`
+  }
+
   // Remove a connection
-  var removeConnection = function (webid) {
+  var removeConnection = function (webid, parentElem) {
     var toAdd = null
     var toDel = []
 
@@ -339,22 +379,13 @@ Connections = (function () {
       toDel.push(st.toNT() + ' .')
     })
     SolidClient.web.patch(proxy(User.webid), toDel, toAdd).then(function () {
-      var moverlay = document.getElementById('delete-dialog')
-      if (moverlay) {
-        moverlay.getElementsByClassName('modal-header')[0].innerHTML = ''
-        moverlay.getElementsByClassName('modal-footer')[0].innerHTML = ''
-        moverlay.getElementsByClassName('modal-body')[0].innerHTML = `<div class="icon-success svg text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="72px" height="72px">
-            <g fill="none" stroke="#43C47A" stroke-width="2">
-              <circle cx="36" cy="36" r="35" style="stroke-dasharray:240px, 240px; stroke-dashoffset: 480px;"></circle>
-              <path d="M17.417,37.778l9.93,9.909l25.444-25.393" style="stroke-dasharray:50px, 50px; stroke-dashoffset: 0px;"></path>
-            </g>
-          </svg>
-          <h6 class="green">Friend removed!</h6>
-        </div>`
+      if (parentElem) {
+        parentElem.getElementsByClassName('modal-header')[0].innerHTML = ''
+        parentElem.getElementsByClassName('modal-footer')[0].innerHTML = ''
+        parentElem.getElementsByClassName('modal-body')[0].innerHTML = successCheckMark("Friend removed!")
         window.setTimeout(function () {
-          moverlay.parentNode.removeChild(moverlay)
-        }, 1500)
+          parentElem.parentNode.removeChild(parentElem)
+        }, 1000)
       }
 
       // Remove the connection from the local list
@@ -584,6 +615,8 @@ Connections = (function () {
   var extendedLook = function (webid, parent) {
     // hide list of connections-list
     hideElement(connections)
+    // hide other buttons
+    hideElement(actionsElement)
     var card = document.createElement('div')
     card.classList.add('card', 'no-border')
 
@@ -593,7 +626,6 @@ Connections = (function () {
     }
 
     var profile = Connections[webid]
-    console.log('Viewing profile', profile)
 
     // scroll whole page into view
     window.setTimeout(function () {
@@ -659,7 +691,6 @@ Connections = (function () {
     body.appendChild(section)
 
     if (profile.emails && profile.emails.length > 0) {
-      console.log(profile.emails)
       profile.emails.forEach(function (addr) {
         addr = cleanMail(addr)
         div = document.createElement('div')
@@ -785,14 +816,8 @@ Connections = (function () {
 
     var wt = document.createElement('div')
     uc.appendChild(wt)
-    wt.classList.add('webid', 'tooltip')
-    wt.setAttribute('data-tooltip', 'View person details')
+    wt.classList.add('webid')
     wt.id = friend.webid
-    wt.addEventListener('click', function () {
-      // push new state to the URL bar
-      pushState('view', friend.webid)
-      viewProfile(friend.webid)
-    }, false)
 
     var iw = document.createElement('div')
     wt.appendChild(iw)
@@ -808,19 +833,47 @@ Connections = (function () {
     img.src = friend.picture
     img.setAttribute('alt', 'Picture of '+friend.name)
 
-    var cc = document.createElement('div')
-    wt.appendChild(cc)
-    cc.classList.add('column', 'center')
+    var info = document.createElement('div')
+    wt.appendChild(info)
+    info.classList.add('column', 'center', 'trunc', 'tooltip')
+    info.setAttribute('data-tooltip', 'View details')
+    info.addEventListener('click', function () {
+      // push new state to the URL bar
+      pushState('view', friend.webid)
+      viewProfile(friend.webid)
+    }, false)
 
-    var n = document.createElement('div')
-    cc.appendChild(n)
-    n.classList.add('name-s')
-    n.innerHTML = friend.name
+    var name = document.createElement('div')
+    info.appendChild(name)
+    name.classList.add('name-s')
+    name.innerHTML = friend.name
 
-    var u = document.createElement('div')
-    cc.appendChild(u)
-    u.classList.add('url', 'grey')
-    u.innerHTML = friend.webid
+    var webid = document.createElement('div')
+    info.appendChild(webid)
+    webid.classList.add('url', 'grey')
+    webid.innerHTML = friend.webid
+
+        // friend status
+    var addDiv = document.createElement('div')
+    wt.appendChild(addDiv)
+    addDiv.classList.add('center', 'center-text', 'p-l-10')
+    if (User && User.webid && !isFriend(friend.webid)) {
+      var addBtn = document.createElement('a')
+      addDiv.appendChild(addBtn)
+      var addIcon = document.createElement('i')
+      addBtn.appendChild(addIcon)
+      addIcon.classList.add('fa', 'fa-2x', 'fa-user-plus')
+      addBtn.addEventListener('click', function () {
+        addConnection(friend).then(function() {
+          addDiv.removeChild(addBtn)
+          addDiv.innerHTML = '<small class="green">Friends</small>'
+        }).catch(function(err) {
+          // already printed error to console
+        })
+      }, false)
+    } else {
+      addDiv.innerHTML = '<small class="green">Friends</small>'
+    }
 
     return friendItem
   }
@@ -885,7 +938,7 @@ Connections = (function () {
     button.classList.add('btn', 'btn-primary')
     button.innerHTML = 'Connect'
     button.addEventListener('click', function () {
-      addConnection(profile)
+      addConnection(profile, true)
       deleteElement(card)
       closeModal()
     }, false)
@@ -1054,7 +1107,7 @@ Connections = (function () {
     del.classList.add('btn', 'btn-primary')
     del.innerHTML = 'Yes, remove it'
     del.addEventListener('click', function () {
-      removeConnection(profile.webid)
+      removeConnection(profile.webid, moverlay)
     }, false)
   }
 
