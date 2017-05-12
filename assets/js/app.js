@@ -1105,7 +1105,7 @@ Connections = (function () {
     var del = document.createElement('button')
     footer.appendChild(del)
     del.classList.add('btn', 'btn-primary')
-    del.innerHTML = 'Yes, remove it'
+    del.innerHTML = 'Yes, remove friend'
     del.addEventListener('click', function () {
       removeConnection(profile.webid, moverlay)
     }, false)
