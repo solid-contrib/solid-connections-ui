@@ -31,6 +31,7 @@ Connections = (function () {
   var overlay = document.getElementById('overlay')
   var infoButtons = document.getElementById('info-buttons')
   var addNewBtn = document.getElementById('add-new')
+  var inviteBtn = document.getElementById('invitebtn')
   var cancelNewBtn = document.getElementsByClassName('cancel-new')
   var showNewModal = document.getElementsByClassName('show-new')
   var lookupElement = document.getElementById('lookup')
@@ -87,6 +88,10 @@ Connections = (function () {
   var items = []
 
   // ------------ END LIST CONF ------------
+
+  var redirTo = function() {
+    return appOrigin + window.location.pathname + window.location.search
+  }
 
   // Send a twinql query and return a promise containing JSON-LD
   var twinqlQuery = function (query) {
@@ -296,7 +301,7 @@ Connections = (function () {
             cancelView()
             closeModal()
           }
-          return resolve()
+          return resolve(profile)
         })
         .catch(function (err) {
           console.log('Error saving new contact:' + err)
@@ -315,10 +320,10 @@ Connections = (function () {
     sort = sort || 'name'
     order = order || 'asc'
 
-    showElement(lookupElement)
-    showElement(infoButtons)
-    if (toList.get('webid', profile.webid).length > 0 && verbose) {
-      addFeedback('', 'You are already connected with this person')
+    if (toList.get('webid', profile.webid).length > 0) {
+      if (verbose) {
+        addFeedback('', 'You are already connected with this person')
+      }
       return
     }
     var item = {}
@@ -346,6 +351,10 @@ Connections = (function () {
     if (verbose) {
       showElement(searchElement)
       showElement(actionsElement)
+      //
+      // showElement(lookupElement)
+      // showElement(infoButtons)
+
       addFeedback('success', 'You have a new friend!')
     }
     toList.sort(sort, { order: order })
@@ -414,17 +423,9 @@ Connections = (function () {
   // Handle connect back case
   var connectBack = function (webid) {
     document.getElementById('webid').value = webid
-    // clear the contents of the modal
-    hideElement(lookupElement)
-    hideElement(infoButtons)
     showModal()
     findWebID()
-    // update URL
-    window.history.replaceState(
-      null,
-      document.title,
-      appUrl
-    )
+    // showList(User.webid)
   }
 
   var getId = function(arr) {
@@ -486,9 +487,9 @@ Connections = (function () {
       // clear the contents of the modal
       hideElement(lookupElement)
       hideElement(infoButtons)
+      hideLoadingButton(addNewBtn)
 
       quickLook(profile, profileInfo)
-      hideLoadingButton(addNewBtn)
     }).catch(function (err) {
       console.log('Could not load profile:', err)
       addFeedback('error', 'Could not load profile data')
@@ -938,13 +939,66 @@ Connections = (function () {
     button.classList.add('btn', 'btn-primary')
     button.innerHTML = 'Connect'
     button.addEventListener('click', function () {
-      addConnection(profile, true)
+      addConnection(profile, true).then(function() {
+        cancelView()
+        pushState('list', User.webid)
+        showList(User.webid)
+      }).catch(function(err) {
+        //
+      })
       deleteElement(card)
       closeModal()
     }, false)
 
-    // finish
+    // append to parent
     parent.appendChild(card)
+  }
+
+  // create invitation link
+  var getInvitationLink = function() {
+    var body = document.getElementsByTagName('body')[0]
+
+    var moverlay = document.createElement('div')
+    body.appendChild(moverlay)
+    moverlay.classList.add('modal-overlay', 'flex', 'center-page')
+    var modal = document.createElement('div')
+    moverlay.appendChild(modal)
+    modal.classList.add('modal-temp', 'modal-sm')
+    var container = document.createElement('div')
+    modal.appendChild(container)
+    container.classList.add('modal-container')
+    container.setAttribute('role', 'document')
+
+    var mhead = document.createElement('div')
+    container.appendChild(mhead)
+    mhead.classList.add('modal-header')
+
+    var mclose = document.createElement('button')
+    mhead.appendChild(mclose)
+    mclose.classList.add('btn', 'btn-clear', 'float-right')
+    mclose.setAttribute('aria-label', 'Close invitation modal')
+    mclose.addEventListener('click', function () {
+      deleteElement(moverlay)
+    }, false)
+
+    var mtitle = document.createElement('div')
+    mhead.appendChild(mtitle)
+    mtitle.classList.add('modal-title')
+    mtitle.innerHTML = 'You can use this link to invite someone to be your friend.'
+
+    var mbody = document.createElement('div')
+    container.appendChild(mbody)
+    mbody.classList.add('modal-body')
+    mbody.innerHTML = ''
+
+    var it = document.createElement('input')
+    mbody.appendChild(it)
+    it.classList.add('form-input')
+    it.type = "text"
+    it.value = appUrl + '?invited='+encodeURIComponent(User.webid)
+    window.setTimeout(function () {
+      it.select()
+    }, 0)
   }
 
   // ------------ FEEDBACK ------------
@@ -1249,6 +1303,10 @@ Connections = (function () {
     findWebID()
   }, false)
 
+  inviteBtn.addEventListener('click', function () {
+    getInvitationLink()
+  }, false)
+
   // close modal clicks
   for (i = 0; i < cancelNewBtn.length; i++) {
     cancelNewBtn[i].addEventListener('click', function () {
@@ -1315,7 +1373,7 @@ Connections = (function () {
     showList(webid)
   }
 
-  var showList = function(webid) {
+  var showList = function(webid, skipLoad) {
     hideElement(signin)
 
     // clear list
@@ -1323,7 +1381,10 @@ Connections = (function () {
     uList = new window.List('connections', listOptions, items)
     window.uList = uList
 
-    loadExtendedUser(webid)
+    if (!skipLoad) {
+      loadExtendedUser(webid)
+    }
+
     if (uList.visibleItems.length === 0) {
       showElement(welcome)
     } else {
@@ -1372,9 +1433,8 @@ Connections = (function () {
         saveLocalStorage(User)
         saveLastAccount(url)
         if (loginUrl && loginUrl.href.length > 0) {
-          var redirTo = loginUrl.href+"?redirect="+encodeURIComponent(appUrl)+"&origin="+encodeURIComponent(appOrigin)
-          console.log('Redir to:', redirTo)
-          window.location.href = redirTo
+          var href = loginUrl.href+"?redirect="+encodeURIComponent(redirTo())+"&origin="+encodeURIComponent(appOrigin)
+          window.location.href = href
         }
       }
       // define onerror behavior
@@ -1486,7 +1546,6 @@ Connections = (function () {
     } catch(err) {
       console.log(err)
     }
-    route()
   }
 
   var clearLocalStorage = function() {
@@ -1518,7 +1577,10 @@ Connections = (function () {
   }
 
   // ------------ INIT APP ------------
-  var route = function() {
+  loadLocalStorage()
+  loadLastAccount()
+
+  var route = function () {
     if (queryVals['list']) {
       cancelView()
       uList.clear()
@@ -1526,6 +1588,17 @@ Connections = (function () {
     } else if (queryVals['view']) {
       cancelView()
       viewProfile(queryVals['view'])
+    } else if (queryVals['invited']) {
+      if (queryVals['key'] && queryVals['webid']) {
+        User.webid = queryVals['webid']
+        User.authkey = queryVals['key']
+        saveLocalStorage(User)
+      }
+      if (!User.webid) {
+        loginButtons.getElementsByTagName('h4')[0].innerHTML = "You must log in to accept the invitation."
+      } else {
+        connectBack(queryVals['invited'])
+      }
     } else if (queryVals['key'] && queryVals['webid']) {
       User.webid = queryVals['webid']
       User.authkey = queryVals['key']
@@ -1549,15 +1622,12 @@ Connections = (function () {
       }
     }
   }
-  loadLocalStorage()
-  loadLastAccount()
-
+  route()
 
   // public methods
   return {
     user: User,
     addFeedback: addFeedback,
-    // registerApp: registerApp,
     initApp: initApp,
     twinqlQuery: twinqlQuery,
     signout: signUserOut
